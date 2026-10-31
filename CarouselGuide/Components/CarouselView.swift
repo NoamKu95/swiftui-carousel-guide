@@ -8,6 +8,11 @@ import SwiftUI
 ///
 /// Infinite only differs by feeding a triple-buffered page list with unique IDs, then
 /// silently recentering onto the middle copy after the animated scroll settles.
+///
+/// **Init caveat:** the ScrollView starts at content offset 0 (copy 0). If `scrollPositionID`
+/// is set to a middle-copy id before layout actually moves there, the first animated
+/// advance interpolates from offset 0 across the whole first copy. We pin to middle
+/// without animation (and delay the auto-scroll timer) until that settle completes.
 struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
     let items: [Item]
     var configuration: CarouselConfiguration = .horizontal
@@ -17,10 +22,12 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
     @StateObject private var autoScroll = AutoScrollController()
     @State private var isDragging = false
 
-    /// The id `.scrollPosition(id:)` watches. For finite this equals `Item.ID` (stringified).
-    /// For infinite this is `"copy|itemID"` for an adjacent page in the looped strip.
+    /// The id `.scrollPosition(id:)` watches. For finite: `"0|itemID"`.
+    /// For infinite: `"copy|itemID"` within the looped strip.
     @State private var scrollPositionID: String?
     @State private var isProgrammaticAdvance = false
+    /// Infinite: false until we've silently landed on the middle copy after layout.
+    @State private var isReadyForAutoAdvance = false
 
     private var pages: [PageRef<Item>] {
         PageRef<Item>.makePages(from: items, infinite: configuration.isInfinite)
@@ -35,36 +42,53 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
                     description: Text("Provide at least one item to render a carousel.")
                 )
             } else {
-                // ONE layout path for finite and infinite — same ScrollView / scrollPosition.
                 PagingScrollLayout(
                     pages: pages,
                     configuration: configuration,
                     scrollPositionID: $scrollPositionID,
                     isDragging: $isDragging,
                     logicalSelection: selection,
+                    onScrollViewAppeared: {
+                        Task { @MainActor in
+                            await pinInfiniteToMiddleCopyIfNeeded()
+                        }
+                    },
                     content: content
                 )
             }
         }
         .onAppear {
-            bootstrapScrollPositionIfNeeded()
-            autoScroll.configure(
-                enabled: configuration.autoScrollEnabled,
-                interval: configuration.autoScrollInterval
-            )
+            prepareInitialScrollPosition()
+            if !configuration.isInfinite {
+                isReadyForAutoAdvance = true
+                startAutoScrollIfNeeded()
+            }
+            // Infinite starts the timer only after `pinInfiniteToMiddleCopyIfNeeded`.
         }
-        .onChange(of: configuration.isInfinite) { _, _ in
+        .onChange(of: configuration.isInfinite) { _, isInfinite in
             scrollPositionID = nil
-            bootstrapScrollPositionIfNeeded()
+            isReadyForAutoAdvance = !isInfinite
+            prepareInitialScrollPosition()
+            if isInfinite {
+                autoScroll.stop()
+                Task { @MainActor in
+                    await pinInfiniteToMiddleCopyIfNeeded()
+                }
+            } else {
+                startAutoScrollIfNeeded()
+            }
         }
         .onChange(of: configuration.autoScrollEnabled) { _, enabled in
-            autoScroll.configure(enabled: enabled, interval: configuration.autoScrollInterval)
+            if enabled, isReadyForAutoAdvance {
+                startAutoScrollIfNeeded()
+            } else if !enabled {
+                autoScroll.stop()
+            }
         }
-        .onChange(of: configuration.autoScrollInterval) { _, interval in
-            autoScroll.configure(
-                enabled: configuration.autoScrollEnabled,
-                interval: interval
-            )
+        .onChange(of: configuration.autoScrollInterval) { _, _ in
+            if isReadyForAutoAdvance {
+                startAutoScrollIfNeeded()
+            }
         }
         .onChange(of: isDragging) { _, dragging in
             if dragging {
@@ -80,16 +104,80 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
         }
         .onDisappear {
             autoScroll.stop()
+            isReadyForAutoAdvance = false
         }
         .accessibilityElement(children: .contain)
         .accessibilityHint(configuration.isInfinite ? "Loops continuously" : "Scrolls through items")
     }
 
+    private func startAutoScrollIfNeeded() {
+        autoScroll.configure(
+            enabled: configuration.autoScrollEnabled && isReadyForAutoAdvance,
+            interval: configuration.autoScrollInterval
+        )
+    }
+
+    /// Silently park on the middle-copy page that matches the logical selection, then arm the timer.
+    @MainActor
+    private func pinInfiniteToMiddleCopyIfNeeded() async {
+        guard configuration.isInfinite, !items.isEmpty else {
+            isReadyForAutoAdvance = true
+            startAutoScrollIfNeeded()
+            return
+        }
+
+        let pageList: [PageRef<Item>] = pages
+        let logical = selection ?? items[0].id
+        guard let middleID = PageRef<Item>.middleID(for: logical, in: pageList) else {
+            isReadyForAutoAdvance = true
+            startAutoScrollIfNeeded()
+            return
+        }
+
+        // Apply (and re-apply after layout) without animation so the first auto tick
+        // only has to move one adjacent page.
+        snapScrollPosition(to: middleID)
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        snapScrollPosition(to: middleID)
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        snapScrollPosition(to: middleID)
+
+        if selection == nil {
+            selection = logical
+        }
+
+        isReadyForAutoAdvance = true
+        startAutoScrollIfNeeded()
+    }
+
+    private func snapScrollPosition(to id: String) {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            scrollPositionID = id
+        }
+    }
+
     /// Timer fired → animate the ScrollView to the next adjacent page (same as finite).
     private func advanceToNextPage() {
-        guard configuration.autoScrollEnabled, !items.isEmpty, !isDragging else { return }
-        let pageList = pages
+        guard configuration.autoScrollEnabled, isReadyForAutoAdvance else { return }
+        guard !items.isEmpty, !isDragging else { return }
+        let pageList: [PageRef<Item>] = pages
         guard !pageList.isEmpty else { return }
+
+        // If somehow still off the middle copy (e.g. init race), snap there and skip this tick
+        // rather than animating across copy 0.
+        if configuration.isInfinite {
+            let currentID = scrollPositionID
+            let currentPage = currentID.flatMap { id in pageList.first(where: { $0.id == id }) }
+            if currentPage == nil || currentPage?.copy != 1 {
+                let logical = currentPage?.item.id ?? selection ?? items[0].id
+                if let middleID = PageRef<Item>.middleID(for: logical, in: pageList) {
+                    snapScrollPosition(to: middleID)
+                }
+                return
+            }
+        }
 
         let currentID = scrollPositionID ?? pageList[configuration.isInfinite ? items.count : 0].id
         guard let currentIndex = pageList.firstIndex(where: { $0.id == currentID }) else { return }
@@ -108,7 +196,6 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
 
         isProgrammaticAdvance = true
 
-        // THIS is the scroll: mutate the binding `.scrollPosition(id:)` observes.
         withAnimation(.smooth(duration: 0.55)) {
             scrollPositionID = nextID
         }
@@ -121,8 +208,6 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
         let needsRecenter = configuration.isInfinite && pageList[nextIndex].copy != 1
         let middleID = PageRef<Item>.middleID(for: logical, in: pageList)
 
-        // Sync logical selection + optional silent recenter AFTER the slide completes.
-        // Touching selection/recenter in the same turn as the animated scroll was a prior failure mode.
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 560_000_000)
             if selection != logical {
@@ -130,11 +215,7 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
             }
             if needsRecenter, let middleID {
                 try? await Task.sleep(nanoseconds: 200_000_000)
-                var transaction = Transaction()
-                transaction.disablesAnimations = true
-                withTransaction(transaction) {
-                    scrollPositionID = middleID
-                }
+                snapScrollPosition(to: middleID)
             }
             isProgrammaticAdvance = false
         }
@@ -147,36 +228,29 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
             return
         }
 
-        // User-driven scroll: keep logical selection live. Programmatic path syncs after animation.
         if !isProgrammaticAdvance, selection != page.item.id {
             selection = page.item.id
         }
     }
 
-    private func bootstrapScrollPositionIfNeeded() {
-        guard scrollPositionID == nil, !items.isEmpty else {
-            syncLogicalSelectionFromScrollIfNeeded()
-            return
-        }
+    private func prepareInitialScrollPosition() {
+        guard !items.isEmpty else { return }
         let logical = selection ?? items[0].id
         let pageList: [PageRef<Item>] = pages
+
+        let targetID: String?
         if configuration.isInfinite {
-            scrollPositionID = PageRef<Item>.middleID(for: logical, in: pageList)
-                ?? pageList[items.count].id
+            targetID = PageRef<Item>.middleID(for: logical, in: pageList) ?? pageList[items.count].id
         } else {
-            scrollPositionID = PageRef<Item>.finiteID(for: logical)
+            targetID = PageRef<Item>.finiteID(for: logical)
+        }
+
+        if let targetID {
+            snapScrollPosition(to: targetID)
         }
         if selection == nil {
             selection = logical
         }
-    }
-
-    private func syncLogicalSelectionFromScrollIfNeeded() {
-        let pageList: [PageRef<Item>] = pages
-        guard let scrollPositionID,
-              let page = pageList.first(where: { (page: PageRef<Item>) in page.id == scrollPositionID }),
-              selection != page.item.id else { return }
-        selection = page.item.id
     }
 }
 
@@ -211,58 +285,69 @@ private struct PageRef<Item: Identifiable & Hashable>: Identifiable, Hashable {
 
 // MARK: - Single paging layout (finite + infinite)
 
-/// Exact finite-style pager. Infinite just passes more `pages` with unique ids.
 private struct PagingScrollLayout<Item: Identifiable & Hashable, Content: View>: View {
     let pages: [PageRef<Item>]
     let configuration: CarouselConfiguration
     @Binding var scrollPositionID: String?
     @Binding var isDragging: Bool
     var logicalSelection: Item.ID?
+    var onScrollViewAppeared: () -> Void
     @ViewBuilder var content: (Item) -> Content
 
     var body: some View {
-        GeometryReader { proxy in
-            let pageSize = pageSize(in: proxy.size)
+        GeometryReader { geometry in
+            let pageSize = pageSize(in: geometry.size)
 
-            ScrollView(configuration.axis.scrollAxis, showsIndicators: configuration.showsIndicators) {
-                let layout = configuration.axis == .horizontal
-                    ? AnyLayout(HStackLayout(spacing: configuration.spacing))
-                    : AnyLayout(VStackLayout(spacing: configuration.spacing))
+            ScrollViewReader { scrollProxy in
+                ScrollView(configuration.axis.scrollAxis, showsIndicators: configuration.showsIndicators) {
+                    let layout = configuration.axis == .horizontal
+                        ? AnyLayout(HStackLayout(spacing: configuration.spacing))
+                        : AnyLayout(VStackLayout(spacing: configuration.spacing))
 
-                layout {
-                    ForEach(pages) { page in
-                        content(page.item)
-                            .frame(
-                                width: configuration.axis == .horizontal ? pageSize.width : nil,
-                                height: configuration.axis == .vertical ? pageSize.height : nil
-                            )
-                            .containerRelativeFrame(
-                                configuration.axis == .horizontal ? .horizontal : .vertical,
-                                count: 1,
-                                span: 1,
-                                spacing: configuration.spacing,
-                                alignment: .center
-                            )
-                            .id(page.id)
-                            .accessibilityAddTraits(
-                                page.item.id == logicalSelection ? .isSelected : AccessibilityTraits()
-                            )
+                    layout {
+                        ForEach(pages) { page in
+                            content(page.item)
+                                .frame(
+                                    width: configuration.axis == .horizontal ? pageSize.width : nil,
+                                    height: configuration.axis == .vertical ? pageSize.height : nil
+                                )
+                                .containerRelativeFrame(
+                                    configuration.axis == .horizontal ? .horizontal : .vertical,
+                                    count: 1,
+                                    span: 1,
+                                    spacing: configuration.spacing,
+                                    alignment: .center
+                                )
+                                .id(page.id)
+                                .accessibilityAddTraits(
+                                    page.item.id == logicalSelection ? .isSelected : AccessibilityTraits()
+                                )
+                        }
                     }
+                    .scrollTargetLayout()
                 }
-                .scrollTargetLayout()
+                .scrollTargetBehavior(.viewAligned)
+                .scrollPosition(id: $scrollPositionID)
+                .contentMargins(
+                    configuration.axis == .horizontal ? .horizontal : .vertical,
+                    configuration.axis == .horizontal
+                        ? configuration.contentInsets.leading
+                        : configuration.contentInsets.top,
+                    for: .scrollContent
+                )
+                .simultaneousGesture(dragGesture)
+                .onAppear {
+                    // Jump to the prepared middle/finite id without animation (offset starts at 0).
+                    if let scrollPositionID {
+                        var transaction = Transaction()
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) {
+                            scrollProxy.scrollTo(scrollPositionID, anchor: .center)
+                        }
+                    }
+                    onScrollViewAppeared()
+                }
             }
-            .scrollTargetBehavior(.viewAligned)
-            .scrollPosition(id: $scrollPositionID)
-            // Reinforce programmatic page changes (timer / binding writes).
-            .animation(.smooth(duration: 0.55), value: scrollPositionID)
-            .contentMargins(
-                configuration.axis == .horizontal ? .horizontal : .vertical,
-                configuration.axis == .horizontal
-                    ? configuration.contentInsets.leading
-                    : configuration.contentInsets.top,
-                for: .scrollContent
-            )
-            .simultaneousGesture(dragGesture)
         }
     }
 
