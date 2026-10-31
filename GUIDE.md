@@ -172,31 +172,15 @@ var loopedItems: [LoopedItem<Item>] {
 Wire selection through a *loop* id while exposing the real item id to your UI:
 
 ```swift
-// Triple-buffer pages identified by Int indices (0 ..< 3N). Middle copy starts at N.
-@State private var pageIndex: Int?
+// Infinite auto-scroll: use UIScrollView (UIViewControllerRepresentable).
+// Triple-buffer pages; auto-advance must move contentOffset with animation:
+scrollView.setContentOffset(nextPageOffset, animated: true)
 
-ScrollViewReader { proxy in
-    ScrollView {
-        ForEach(0..<items.count * 3, id: \.self) { index in
-            card(items[index % items.count]).id(index)
-        }
-        .scrollTargetLayout()
-    }
-    .scrollTargetBehavior(.viewAligned)
-    .scrollPosition(id: $pageIndex)
-}
-
-// Auto-advance — must drive a real content-offset slide (manual already does via gestures).
-// Assigning only a looped string id under withAnimation often *snaps* with no slide.
-withAnimation(.smooth(duration: 0.55)) {
-    pageIndex = current + 1
-    proxy.scrollTo(current + 1, anchor: .center)
-}
-
-// Sync logical selection AFTER the slide (~0.55s). Silent middle-copy recenter after settle.
+// After the animation ends, silently recenter onto the middle copy if needed:
+scrollView.setContentOffset(middleCopyOffset, animated: false)
 ```
 
-**Why infinite auto looked like a card swap:** manual infinite already scrolled (gesture physics). Auto paths that only mutated logical `selection` or a looped string `scrollPosition` id—or that wrote other `@State` / `disablesAnimations` in the same turn—updated which page was selected without an interpolated content-offset animation. Fix: adjacent **Int** page index + `proxy.scrollTo` inside `withAnimation` (both axes). Verify by watching neighboring cards **slide across**, not pop.
+**Why infinite auto looked like a card swap (including after SwiftUI `scrollTo` attempts):** manual infinite already scrolled via gesture physics. Programmatic SwiftUI `scrollPosition` / `ScrollViewProxy.scrollTo` under `withAnimation` still **snapped** to the next looped page for the infinite layout (especially noticeable on **vertical**), so the card appeared to replace in place. Finite auto works because it animates a small non-looping `scrollPosition` id set. **Fix used in the companion app:** infinite mode is a UIKit pager (`InfinitePagingScrollView`) that advances with `setContentOffset(_:animated:)` on both axes; finite stays pure SwiftUI. Verify by watching neighboring cards **slide**, matching finite vertical auto.
 
 **When not to use infinite:** short catalogs (2–3 items) where looping feels gimmicky, or content with a meaningful “end” (checkout steps, onboarding).
 
@@ -221,7 +205,7 @@ ScrollView(.vertical) {
 .scrollPosition(id: $loopSelection)
 ```
 
-Same adjacent-page auto-advance and deferred recenter as the horizontal infinite case — vertical only swaps the scroll axis. Soft haptics on auto-advance help vertical paging feel deliberate without shouting.
+Same UIKit `setContentOffset(_:animated:)` pager as horizontal infinite — only the scroll axis changes. Soft haptics on auto-advance help vertical paging feel deliberate without shouting.
 
 ---
 
@@ -359,7 +343,8 @@ Before you ship a carousel:
 
 | File | Role |
 |------|------|
-| `CarouselView.swift` | Finite + infinite layouts, drag pause hooks |
+| `CarouselView.swift` | Finite SwiftUI layout + wires infinite UIKit pager |
+| `InfinitePagingScrollView.swift` | Infinite H/V pager via animated `contentOffset` |
 | `AutoScrollController.swift` | Timer lifecycle with resume delay |
 | `CarouselConfiguration.swift` | Shared knobs / axis helpers |
 | `CarouselDemoView.swift` | Auto/Manual UX pattern |
