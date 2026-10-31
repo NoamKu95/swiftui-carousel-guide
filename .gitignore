@@ -2,9 +2,7 @@
 DerivedData/
 build/
 *.xcuserstate
-*.xccheckout
-*.xcscmblueprint
-xcuserdata/
+*.xcuserdata/
 *.moved-aside
 *.hmap
 *.ipa
@@ -13,18 +11,13 @@ xcuserdata/
 
 # Swift Package Manager
 .build/
-Packages/
-Package.resolved
-*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+.swiftpm/
 
 # macOS
 .DS_Store
-.AppleDouble
-.LSOverride
 
-# IDE
+# Cursor / editor
 .idea/
 .vscode/
 *.swp
-*~
-agent-tools/
+agent-tools

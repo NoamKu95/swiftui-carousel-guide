@@ -360,16 +360,21 @@ Before you ship a carousel:
 
 ## What to steal from the companion app
 
+Reusable code lives under `CarouselGuide/Carousel/`; demo chrome under `CarouselGuide/Demo/`.
+
 | File | Role |
 |------|------|
-| `CarouselView.swift` | Finite SwiftUI layout + wires infinite UIKit pager |
-| `InfinitePagingScrollView.swift` | Infinite H/V pager via animated `contentOffset`. H pages fill the offered stage (same pageSize as finite); V lean path unchanged. |
-| `StackedInfiniteCarouselView.swift` | 3-up infinite circle stack, V + H (angle → orbit / depth / scale) |
-| `AutoScrollController.swift` | Timer lifecycle with resume delay |
-| `CarouselConfiguration.swift` | Shared knobs / axis helpers |
-| `CarouselDemoView.swift` | Auto/Manual UX pattern |
-| `SampleCardView.swift` | Fills the page frame it’s given |
+| `Carousel/CarouselView.swift` | Finite + infinite facade |
+| `Carousel/FiniteCarouselLayout.swift` | Pure-SwiftUI snapping pager |
+| `Carousel/Infinite/InfinitePagingScrollView.swift` | UIKit representable bridge |
+| `Carousel/Infinite/InfinitePagingController.swift` | Triple-buffer + snap physics |
+| `Carousel/Stack/StackedInfiniteCarouselView.swift` | 3-up circle stack (V + H) |
+| `Carousel/Stack/StackCarouselMetrics.swift` | Axis-aware sizing helpers |
+| `Carousel/AutoScrollController.swift` | Timer lifecycle with resume delay |
+| `Carousel/CarouselConfiguration.swift` | Shared knobs |
+| `Demo/Screens/CarouselDemoView.swift` | Auto/Manual UX pattern |
+| `Demo/Components/SampleCardView.swift` | Fills the page frame it’s given |
 
-Clone the repo, run the eight demos, then lift `CarouselView` into your project. Start with a finite horizontal shelf; add infinite and auto-scroll only when the product story needs them.
+Clone the repo, run the six demos, then lift the `Carousel/` folder into your project. Start with a finite horizontal shelf; add infinite and auto-scroll only when the product story needs them.
 
 Ship carousels that feel inevitable — not clever.

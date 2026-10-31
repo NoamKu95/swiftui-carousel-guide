@@ -1,57 +1,63 @@
 # SwiftUI Carousel Guide
 
-Companion iOS demo for the Medium article on building polished SwiftUI carousels — finite and infinite, horizontal and vertical, with auto-scroll and manual control.
+Interview-ready iOS sample that demonstrates **six** carousel patterns in one app:
+
+1. Finite horizontal  
+2. Finite vertical  
+3. Infinite horizontal (UIKit pager)  
+4. Infinite vertical (UIKit pager)  
+5. 3-up infinite stack — vertical circle  
+6. 3-up infinite stack — horizontal circle  
+
+Each demo supports **Auto** and **Manual** modes with pause-on-drag.
 
 **Repo:** https://github.com/NoamKu95/swiftui-carousel-guide  
-**Requires:** Xcode 15+, iOS 17 SDK, a Mac.
+**Requires:** Xcode 15+, iOS 17 SDK
 
-## Open & run
+## Run
 
-1. Clone this repository.
-2. Open `CarouselGuide.xcodeproj` in Xcode.
-3. Select an iPhone simulator (or a device).
-4. Press **Run** (`⌘R`).
+1. Open `CarouselGuide.xcodeproj`
+2. Pick an iPhone simulator
+3. Run (`⌘R`)
 
-No CocoaPods/SPM packages are required — the app is pure SwiftUI.
+No SPM / CocoaPods dependencies.
 
-## Demo map
+## Architecture
 
-The root menu lists six carousel kinds. Each demo page has an **Auto / Manual** segmented control:
-
-| Demo | Axis | Looping | Sample content |
-|------|------|---------|----------------|
-| Horizontal Carousel | Horizontal | Finite | Travel destinations |
-| Vertical Carousel | Vertical | Finite | Playlists |
-| Infinite Horizontal | Horizontal | Seamless loop | Travel destinations |
-| Infinite Vertical | Vertical | Seamless loop | Playlists |
-| 3-Up Stack (Vertical) | Vertical circle | Infinite · 3 items | Card designs |
-| 3-Up Stack (Horizontal) | Horizontal circle | Infinite · 3 items | Card designs |
-
-On **Auto**, the carousel advances on an adjustable interval, pauses while you drag, then resumes. On **Manual**, nothing auto-advances.
-
-## Project structure
+Reusable carousel toolkit is separated from the demo shell:
 
 ```
 CarouselGuide/
-├── CarouselGuideApp.swift          # App entry
-├── Models/
-│   ├── CarouselItem.swift
-│   └── SampleData.swift
-├── Components/
-│   ├── CarouselConfiguration.swift # Axis, looping, auto-scroll knobs
-│   ├── CarouselView.swift          # Finite SwiftUI + infinite UIKit pager
-│   ├── InfinitePagingScrollView.swift # Infinite H/V via animated contentOffset
-│   ├── StackedInfiniteCarouselView.swift # 3-up infinite circle stack (V + H)
-│   ├── AutoScrollController.swift  # Pause / resume timer
-│   ├── SampleCardView.swift
-│   └── PageIndicatorView.swift
-└── Screens/
-    ├── DemoKind.swift
-    ├── DemoMenuView.swift          # Root navigation list
-    └── CarouselDemoView.swift      # Per-demo page with Auto/Manual
+├── App/                         # @main entry
+├── Carousel/                    # ← drop into another app
+│   ├── CarouselAxis.swift
+│   ├── CarouselConfiguration.swift
+│   ├── AutoScrollController.swift
+│   ├── CarouselView.swift       # finite + infinite facade
+│   ├── FiniteCarouselLayout.swift
+│   ├── PageIndicatorView.swift
+│   ├── Infinite/
+│   │   ├── InfinitePagingScrollView.swift
+│   │   └── InfinitePagingController.swift
+│   └── Stack/
+│       ├── StackCarouselMetrics.swift
+│       └── StackedInfiniteCarouselView.swift
+├── Demo/                        # sample screens + data only
+│   ├── Models/
+│   ├── Components/
+│   └── Screens/
+└── Resources/
 ```
 
-### Component API (quick look)
+| Concern | Type | Notes |
+|---------|------|--------|
+| Finite paging | `CarouselView` → `FiniteCarouselLayout` | SwiftUI `scrollTargetBehavior` |
+| Infinite paging | `CarouselView` → `InfinitePagingScrollView` | Triple-buffer + `setContentOffset` |
+| 3-up circle | `StackedInfiniteCarouselView` | Continuous ring `progress` |
+| Auto-scroll | `AutoScrollController` | Shared timer + resume delay |
+| Layout math | `StackCarouselMetrics` | Axis-aware sizing helpers |
+
+### Drop-in usage
 
 ```swift
 CarouselView(
@@ -68,15 +74,32 @@ CarouselView(
 }
 ```
 
-## Guide concepts
+```swift
+StackedInfiniteCarouselView(
+    items: cardDesigns,
+    currentIndex: $index,
+    axis: .vertical
+) { item in
+    SampleCardView(item: item)
+}
+.frame(height: StackCarouselMetrics.stackExtent(forCardCrossAxis: width))
+```
 
-This repo implements the patterns in [`GUIDE.md`](./GUIDE.md) (Medium Articles project path: `docs/swiftui-carousels-guide.md`):
+## Demo map
 
-- Snapping with `scrollTargetBehavior(.viewAligned)` and `scrollPosition(id:)`
-- Infinite looping via a triple-buffered item list + silent recenter
-- Auto-scroll that yields to user interaction
-- Accessibility labels, selected traits, and Dynamic Type–friendly typography
+| Demo | Axis | Looping | Content |
+|------|------|---------|---------|
+| Horizontal Carousel | H | Finite | Destinations |
+| Vertical Carousel | V | Finite | Playlists |
+| Infinite Horizontal | H | Seamless | Destinations |
+| Infinite Vertical | V | Seamless | Playlists |
+| 3-Up Stack (Vertical) | V circle | Infinite · 3 | Card designs |
+| 3-Up Stack (Horizontal) | H circle | Infinite · 3 | Card designs |
+
+## Guide
+
+Deep-dive patterns and trade-offs live in [`GUIDE.md`](./GUIDE.md).
 
 ## License
 
-Sample code for educational use with the Medium Articles project.
+Sample code for educational / interview use.

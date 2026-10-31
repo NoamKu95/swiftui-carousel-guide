@@ -1,103 +1,12 @@
 import SwiftUI
 import UIKit
 
-/// UIKit-backed infinite pager for both axes.
-///
-/// SwiftUI `ScrollView` + `scrollPosition` / `scrollTo` did not animate auto-advance for the
-/// infinite triple-buffer layout (cards swapped with no content-offset slide). Manual dragging
-/// still worked because gesture physics move the offset. This representable advances with
-/// `UIScrollView.setContentOffset(_:animated:)`, which always produces a real slide.
-struct InfinitePagingScrollView<Item: Identifiable & Hashable, Page: View>: UIViewControllerRepresentable {
-    let items: [Item]
-    let axis: CarouselAxis
-    let spacing: CGFloat
-    let contentInsets: EdgeInsets
-    @Binding var selection: Item.ID?
-    @Binding var isDragging: Bool
-    var autoAdvanceTick: UInt64
-    var autoScrollEnabled: Bool
-    @ViewBuilder var pageBuilder: (Item) -> Page
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(selection: $selection, isDragging: $isDragging)
-    }
-
-    func makeUIViewController(context: Context) -> InfinitePagingController<Item, Page> {
-        let controller = InfinitePagingController<Item, Page>()
-        controller.axis = axis
-        controller.spacing = spacing
-        controller.insets = contentInsets
-        controller.pageBuilder = pageBuilder
-        controller.onSelect = { id in
-            context.coordinator.applySelection(id)
-        }
-        controller.onDragging = { dragging in
-            context.coordinator.applyDragging(dragging)
-        }
-        controller.reload(items: items, selecting: selection)
-        context.coordinator.lastTick = autoAdvanceTick
-        return controller
-    }
-
-    func updateUIViewController(_ controller: InfinitePagingController<Item, Page>, context: Context) {
-        controller.axis = axis
-        controller.spacing = spacing
-        controller.insets = contentInsets
-        controller.pageBuilder = pageBuilder
-        controller.onSelect = { id in
-            context.coordinator.applySelection(id)
-        }
-        controller.onDragging = { dragging in
-            context.coordinator.applyDragging(dragging)
-        }
-
-        if controller.items.map(\.id) != items.map(\.id) {
-            controller.reload(items: items, selecting: selection)
-        }
-
-        if autoScrollEnabled,
-           context.coordinator.lastTick != autoAdvanceTick {
-            context.coordinator.lastTick = autoAdvanceTick
-            if !context.coordinator.dragging {
-                controller.advanceOnePage(animated: true)
-            }
-        }
-    }
-
-    final class Coordinator {
-        var selection: Binding<Item.ID?>
-        var isDragging: Binding<Bool>
-        var lastTick: UInt64 = 0
-        var dragging = false
-
-        init(selection: Binding<Item.ID?>, isDragging: Binding<Bool>) {
-            self.selection = selection
-            self.isDragging = isDragging
-        }
-
-        func applySelection(_ id: Item.ID) {
-            if selection.wrappedValue != id {
-                selection.wrappedValue = id
-            }
-        }
-
-        func applyDragging(_ value: Bool) {
-            dragging = value
-            if isDragging.wrappedValue != value {
-                isDragging.wrappedValue = value
-            }
-        }
-    }
-}
-
-// MARK: - Page host wrapper
-
 /// Concrete hosted root with an exact size so `UIHostingController` stays typed as
 /// `PageHost<Page>` (not `some View`).
 ///
-/// Horizontal: size = available stage page (same as finite `pageSize`) so cards fill the
-/// carousel without growing past the screen. Vertical: `size: nil` (lean auto-scroll path).
-private struct PageHost<Content: View>: View {
+/// Horizontal pages fill the stage (same as finite `pageSize`). Vertical keeps
+/// `size: nil` so the lean auto-scroll path is unchanged.
+struct PageHost<Content: View>: View {
     let content: Content
     var size: CGSize?
 
@@ -111,8 +20,8 @@ private struct PageHost<Content: View>: View {
     }
 }
 
-// MARK: - UIScrollView controller
-
+/// Triple-buffered `UIScrollView` pager: three copies of the item list, silent
+/// recenter into the middle copy, velocity-aware snap on drag end.
 @MainActor
 final class InfinitePagingController<Item: Identifiable & Hashable, Page: View>: UIViewController, UIScrollViewDelegate {
     var axis: CarouselAxis = .vertical
@@ -216,15 +125,12 @@ final class InfinitePagingController<Item: Identifiable & Hashable, Page: View>:
             let root = PageHost(content: pageBuilder(items[index % items.count]), size: nil)
             let host = UIHostingController(rootView: root)
             host.view.backgroundColor = .clear
-            // Clip H pages to the stage frame so hosts can’t paint taller than available space.
             host.view.clipsToBounds = (axis == .horizontal)
             host.view.translatesAutoresizingMaskIntoConstraints = true
             host.view.autoresizingMask = []
-            // Frames are the only size authority — never intrinsic/contentSize (that oversized H).
             if #available(iOS 16.0, *) {
                 host.sizingOptions = []
             }
-            // Horizontal only: avoid safe-area padding fighting the stage-sized frame.
             if axis == .horizontal, #available(iOS 16.4, *) {
                 host.safeAreaRegions = []
             }
@@ -247,9 +153,6 @@ final class InfinitePagingController<Item: Identifiable & Hashable, Page: View>:
             let main = CGFloat(index) * strideLength
             let item = items[index % items.count]
             if horizontal {
-                // Fill available stage — same numbers as FiniteCarouselLayout.pageSize:
-                // width = bounds − H insets, height = full offered stage height.
-                // Leading inset mirrors finite contentMargins; card padding lives in pageBuilder.
                 let size = CGSize(width: pageLength, height: max(view.bounds.height, 1))
                 host.rootView = PageHost(content: pageBuilder(item), size: size)
                 host.view.frame = CGRect(
@@ -259,7 +162,6 @@ final class InfinitePagingController<Item: Identifiable & Hashable, Page: View>:
                     height: size.height
                 )
             } else {
-                // Unchanged vertical frames / lean host — keep infinite V auto-scroll behavior.
                 host.rootView = PageHost(content: pageBuilder(item), size: nil)
                 host.view.frame = CGRect(
                     x: insets.leading,
@@ -270,7 +172,6 @@ final class InfinitePagingController<Item: Identifiable & Hashable, Page: View>:
             }
         }
 
-        // Offset for page i is `i * strideLength`. Content must extend far enough for the last page.
         let contentSpan = insets.mainLeading(axis)
             + CGFloat(loopedCount) * pageLength
             + CGFloat(max(loopedCount - 1, 0)) * spacing
@@ -283,8 +184,6 @@ final class InfinitePagingController<Item: Identifiable & Hashable, Page: View>:
 
     private func setOffset(toPage index: Int, animated: Bool) {
         let index = min(max(index, 0), max(loopedCount - 1, 0))
-        // Page frame main origin = insets.mainLeading + index * stride.
-        // Keep the leading/top inset visible: offset = index * stride.
         let main = CGFloat(index) * strideLength
         let point = axis == .horizontal ? CGPoint(x: main, y: 0) : CGPoint(x: 0, y: main)
         scrollView.setContentOffset(point, animated: animated)
@@ -327,23 +226,18 @@ final class InfinitePagingController<Item: Identifiable & Hashable, Page: View>:
     ) {
         guard strideLength > 0 else { return }
         let horizontal = axis == .horizontal
-        // Use the *current* offset (where the finger lifted), not UIKit's projected
-        // target — then decide the page ourselves. The old code rounded the projected
-        // target AND added/subtracted a page from velocity (with inverted signs), so
-        // short flicks often canceled back to the same page (needed a long drag past
-        // 50%), while other flicks double-advanced and looked like an instant swap.
+        // Snap from the lift offset + velocity (not UIKit's projected target),
+        // so short flicks and long drags feel consistent.
         let current = horizontal ? scrollView.contentOffset.x : scrollView.contentOffset.y
         let v = horizontal ? velocity.x : velocity.y
         let resting = current / strideLength
 
         let index: Int
         if v > 0.2 {
-            // Positive velocity → higher content offset → next page.
             index = Int(floor(resting)) + 1
         } else if v < -0.2 {
             index = Int(ceil(resting)) - 1
         } else {
-            // Slow drag: classic midpoint snap.
             index = Int(resting.rounded())
         }
 
@@ -380,7 +274,7 @@ final class InfinitePagingController<Item: Identifiable & Hashable, Page: View>:
     }
 }
 
-private extension EdgeInsets {
+extension EdgeInsets {
     func mainLeading(_ axis: CarouselAxis) -> CGFloat {
         axis == .horizontal ? leading : top
     }

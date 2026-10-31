@@ -21,6 +21,11 @@
 		B74F7217F8DC4F8BB28AF513 /* CarouselDemoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 774F7217F8DC4F8BB28AF513 /* CarouselDemoView.swift */; };
 		B7C961A99F22400681C710AF /* PageIndicatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37C961A99F22400681C710AF /* PageIndicatorView.swift */; };
 		BAA7C4C29DF540DB95A9CAFC /* CarouselConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AA7C4C29DF540DB95A9CAFC /* CarouselConfiguration.swift */; };
+		BAXIS0000000000000000001 /* CarouselAxis.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAXIS0000000000000000001 /* CarouselAxis.swift */; };
+		BFINIT000000000000000001 /* FiniteCarouselLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFINIT000000000000000001 /* FiniteCarouselLayout.swift */; };
+		BINFCTL00000000000000001 /* InfinitePagingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FINFCTL00000000000000001 /* InfinitePagingController.swift */; };
+		BSTACKM00000000000000001 /* StackCarouselMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = FSTACKM00000000000000001 /* StackCarouselMetrics.swift */; };
+		BDEMOROW0000000000000001 /* DemoRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDEMOROW0000000000000001 /* DemoRowView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -39,6 +44,11 @@
 		E1006E96822A45559C12FC92 /* CarouselGuideApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarouselGuideApp.swift; sourceTree = "<group>"; };
 		E684DC4E6F184347882CB4BC /* CarouselView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarouselView.swift; sourceTree = "<group>"; };
 		E6CE78D918304028918E6CA7 /* AutoScrollController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoScrollController.swift; sourceTree = "<group>"; };
+		FAXIS0000000000000000001 /* CarouselAxis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarouselAxis.swift; sourceTree = "<group>"; };
+		FFINIT000000000000000001 /* FiniteCarouselLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FiniteCarouselLayout.swift; sourceTree = "<group>"; };
+		FINFCTL00000000000000001 /* InfinitePagingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfinitePagingController.swift; sourceTree = "<group>"; };
+		FSTACKM00000000000000001 /* StackCarouselMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackCarouselMetrics.swift; sourceTree = "<group>"; };
+		FDEMOROW0000000000000001 /* DemoRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoRowView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -63,16 +73,66 @@
 		2CB73D8D399F4654BF0696AB /* CarouselGuide */ = {
 			isa = PBXGroup;
 			children = (
-				E1006E96822A45559C12FC92 /* CarouselGuideApp.swift */,
-				A10000000000000000000001 /* Models */,
-				A10000000000000000000002 /* Components */,
-				A10000000000000000000003 /* Screens */,
+				GAPP00000000000000000001 /* App */,
+				GCAROUSEL000000000000001 /* Carousel */,
+				GDEMO0000000000000000001 /* Demo */,
 				A10000000000000000000004 /* Resources */,
 			);
 			path = CarouselGuide;
 			sourceTree = "<group>";
 		};
-		A10000000000000000000001 /* Models */ = {
+		GAPP00000000000000000001 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				E1006E96822A45559C12FC92 /* CarouselGuideApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		GCAROUSEL000000000000001 /* Carousel */ = {
+			isa = PBXGroup;
+			children = (
+				FAXIS0000000000000000001 /* CarouselAxis.swift */,
+				6AA7C4C29DF540DB95A9CAFC /* CarouselConfiguration.swift */,
+				E6CE78D918304028918E6CA7 /* AutoScrollController.swift */,
+				E684DC4E6F184347882CB4BC /* CarouselView.swift */,
+				FFINIT000000000000000001 /* FiniteCarouselLayout.swift */,
+				37C961A99F22400681C710AF /* PageIndicatorView.swift */,
+				GINF00000000000000000001 /* Infinite */,
+				GSTACK000000000000000001 /* Stack */,
+			);
+			path = Carousel;
+			sourceTree = "<group>";
+		};
+		GINF00000000000000000001 /* Infinite */ = {
+			isa = PBXGroup;
+			children = (
+				A2F8C1D04B7E4E1A9C3D5E60 /* InfinitePagingScrollView.swift */,
+				FINFCTL00000000000000001 /* InfinitePagingController.swift */,
+			);
+			path = Infinite;
+			sourceTree = "<group>";
+		};
+		GSTACK000000000000000001 /* Stack */ = {
+			isa = PBXGroup;
+			children = (
+				FSTACKM00000000000000001 /* StackCarouselMetrics.swift */,
+				A9C0D1E2F3A445566778899A /* StackedInfiniteCarouselView.swift */,
+			);
+			path = Stack;
+			sourceTree = "<group>";
+		};
+		GDEMO0000000000000000001 /* Demo */ = {
+			isa = PBXGroup;
+			children = (
+				GDEMOMODELS0000000000001 /* Models */,
+				GDEMOCOMP000000000000001 /* Components */,
+				GDEMOSCR0000000000000001 /* Screens */,
+			);
+			path = Demo;
+			sourceTree = "<group>";
+		};
+		GDEMOMODELS0000000000001 /* Models */ = {
 			isa = PBXGroup;
 			children = (
 				D1D6A5EA51434AA694545E64 /* CarouselItem.swift */,
@@ -81,25 +141,20 @@
 			path = Models;
 			sourceTree = "<group>";
 		};
-		A10000000000000000000002 /* Components */ = {
+		GDEMOCOMP000000000000001 /* Components */ = {
 			isa = PBXGroup;
 			children = (
-				6AA7C4C29DF540DB95A9CAFC /* CarouselConfiguration.swift */,
-				E684DC4E6F184347882CB4BC /* CarouselView.swift */,
-				A2F8C1D04B7E4E1A9C3D5E60 /* InfinitePagingScrollView.swift */,
-				A9C0D1E2F3A445566778899A /* StackedInfiniteCarouselView.swift */,
-				E6CE78D918304028918E6CA7 /* AutoScrollController.swift */,
 				A6CE3F5AD8924BD6B2E17D2C /* SampleCardView.swift */,
-				37C961A99F22400681C710AF /* PageIndicatorView.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
 		};
-		A10000000000000000000003 /* Screens */ = {
+		GDEMOSCR0000000000000001 /* Screens */ = {
 			isa = PBXGroup;
 			children = (
 				D4D4B2341A78401E959EB3A1 /* DemoKind.swift */,
 				92BCEB30C66042F5B36C5472 /* DemoMenuView.swift */,
+				FDEMOROW0000000000000001 /* DemoRowView.swift */,
 				774F7217F8DC4F8BB28AF513 /* CarouselDemoView.swift */,
 			);
 			path = Screens;
@@ -191,17 +246,22 @@
 			buildActionMask = 2147483647;
 			files = (
 				B1006E96822A45559C12FC92 /* CarouselGuideApp.swift in Sources */,
-				B1D6A5EA51434AA694545E64 /* CarouselItem.swift in Sources */,
-				B34B81CFBAE149E38410D049 /* SampleData.swift in Sources */,
+				BAXIS0000000000000000001 /* CarouselAxis.swift in Sources */,
 				BAA7C4C29DF540DB95A9CAFC /* CarouselConfiguration.swift in Sources */,
-				B6CE3F5AD8924BD6B2E17D2C /* SampleCardView.swift in Sources */,
-				B7C961A99F22400681C710AF /* PageIndicatorView.swift in Sources */,
 				B6CE78D918304028918E6CA7 /* AutoScrollController.swift in Sources */,
 				B684DC4E6F184347882CB4BC /* CarouselView.swift in Sources */,
+				BFINIT000000000000000001 /* FiniteCarouselLayout.swift in Sources */,
+				B7C961A99F22400681C710AF /* PageIndicatorView.swift in Sources */,
 				B2F8C1D04B7E4E1A9C3D5E60 /* InfinitePagingScrollView.swift in Sources */,
+				BINFCTL00000000000000001 /* InfinitePagingController.swift in Sources */,
+				BSTACKM00000000000000001 /* StackCarouselMetrics.swift in Sources */,
 				B9C0D1E2F3A445566778899A /* StackedInfiniteCarouselView.swift in Sources */,
+				B1D6A5EA51434AA694545E64 /* CarouselItem.swift in Sources */,
+				B34B81CFBAE149E38410D049 /* SampleData.swift in Sources */,
+				B6CE3F5AD8924BD6B2E17D2C /* SampleCardView.swift in Sources */,
 				B4D4B2341A78401E959EB3A1 /* DemoKind.swift in Sources */,
 				B2BCEB30C66042F5B36C5472 /* DemoMenuView.swift in Sources */,
+				BDEMOROW0000000000000001 /* DemoRowView.swift in Sources */,
 				B74F7217F8DC4F8BB28AF513 /* CarouselDemoView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

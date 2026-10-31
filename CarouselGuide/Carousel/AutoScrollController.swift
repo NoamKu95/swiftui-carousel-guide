@@ -1,7 +1,10 @@
 import Combine
 import Foundation
 
-/// Owns the auto-advance timer and pause/resume semantics for carousel demos.
+/// Owns the auto-advance timer and pause/resume semantics for carousels.
+///
+/// Consumers observe `tick` (monotonic) and advance one page per tick.
+/// Call `pauseForUserInteraction()` from drag handlers so playback yields to the finger.
 @MainActor
 final class AutoScrollController: ObservableObject {
     @Published private(set) var tick: UInt64 = 0

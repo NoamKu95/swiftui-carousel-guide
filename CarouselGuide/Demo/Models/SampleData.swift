@@ -84,8 +84,8 @@ enum SampleData {
         )
     ]
 
-    /// Card-design picks for the stacked infinite demos (exactly 3 items).
-    /// Gradients stay fully opaque so the focused card never reveals cards behind it.
+    /// Card-design picks for the 3-up stacked demos (exactly three items).
+    /// Gradients stay fully opaque so the focused card never reveals neighbors.
     static let cardDesigns: [CarouselItem] = [
         CarouselItem(
             id: "card-onyx",
