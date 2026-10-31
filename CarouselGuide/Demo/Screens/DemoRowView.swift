@@ -13,6 +13,7 @@ struct DemoRowView: View {
                 Image(systemName: kind.systemImage)
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(Color(.systemBackground))
+                    .rotationEffect(kind.systemImageRotation)
             }
 
             VStack(alignment: .leading, spacing: 4) {

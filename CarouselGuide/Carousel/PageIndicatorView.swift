@@ -18,7 +18,7 @@ struct PageIndicatorView: View {
                         width: axis == .horizontal ? (index == currentIndex ? 18 : 7) : 7,
                         height: axis == .vertical ? (index == currentIndex ? 18 : 7) : 7
                     )
-                    .animation(.spring(response: 0.35, dampingFraction: 0.8), value: currentIndex)
+                    .animation(.spring(response: 0.18, dampingFraction: 0.86), value: currentIndex)
                     .accessibilityHidden(true)
             }
         }

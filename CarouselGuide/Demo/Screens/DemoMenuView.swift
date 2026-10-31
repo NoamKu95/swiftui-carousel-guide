@@ -37,7 +37,7 @@ struct DemoMenuView: View {
                 .textCase(.uppercase)
                 .tracking(0.8)
 
-            Text("Six demos covering finite, infinite, auto, manual, and 3-up stack carousels.")
+            Text("Six demos covering finite, infinite, auto, manual, and 3D circle carousels.")
                 .font(.title3)
                 .foregroundStyle(.primary)
                 .fixedSize(horizontal: false, vertical: true)

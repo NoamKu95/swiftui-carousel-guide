@@ -43,6 +43,8 @@ struct CarouselDemoView: View {
         .background(demoBackground)
         .navigationTitle(kind.title)
         .navigationBarTitleDisplayMode(.inline)
+        // Chevron only — hide the previous screen’s “Carousels” label.
+        .navigationBarBackButtonDisplayMode(.minimal)
         .onAppear {
             selection = kind.items.first?.id
             stackedIndex = 0

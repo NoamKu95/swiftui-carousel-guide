@@ -6,8 +6,8 @@ Interview-ready iOS sample that demonstrates **six** carousel patterns in one ap
 2. Finite vertical  
 3. Infinite horizontal (UIKit pager)  
 4. Infinite vertical (UIKit pager)  
-5. 3-up infinite stack — vertical circle  
-6. 3-up infinite stack — horizontal circle  
+5. 3D infinite vertical (circle stack)  
+6. 3D infinite horizontal (circle stack)  
 
 Each demo supports **Auto** and **Manual** modes with pause-on-drag.
 
@@ -93,8 +93,8 @@ StackedInfiniteCarouselView(
 | Vertical Carousel | V | Finite | Playlists |
 | Infinite Horizontal | H | Seamless | Destinations |
 | Infinite Vertical | V | Seamless | Playlists |
-| 3-Up Stack (Vertical) | V circle | Infinite · 3 | Card designs |
-| 3-Up Stack (Horizontal) | H circle | Infinite · 3 | Card designs |
+| 3D Infinite Vertical | V circle | Infinite · 3 | Card designs |
+| 3D Infinite Horizontal | H circle | Infinite · 3 | Card designs |
 
 ## Guide
 

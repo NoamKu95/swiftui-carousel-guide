@@ -17,8 +17,8 @@ enum DemoKind: String, CaseIterable, Identifiable, Hashable {
         case .vertical: "Vertical Carousel"
         case .horizontalInfinite: "Infinite Horizontal"
         case .verticalInfinite: "Infinite Vertical"
-        case .stackedVertical: "3-Up Stack (Vertical)"
-        case .stackedHorizontal: "3-Up Stack (Horizontal)"
+        case .stackedVertical: "3D Infinite Vertical"
+        case .stackedHorizontal: "3D Infinite Horizontal"
         }
     }
 
@@ -43,10 +43,18 @@ enum DemoKind: String, CaseIterable, Identifiable, Hashable {
         switch self {
         case .horizontal: "rectangle.split.2x1"
         case .vertical: "rectangle.split.1x2"
-        case .horizontalInfinite: "infinity.circle"
-        case .verticalInfinite: "arrow.up.arrow.down.circle"
-        case .stackedVertical: "rectangle.stack"
-        case .stackedHorizontal: "rectangle.stack.fill"
+        case .horizontalInfinite, .verticalInfinite: "infinity.circle"
+        // 3D depth stacks — clearer than flat rectangle.stack.
+        case .stackedVertical: "square.stack.3d.up"
+        case .stackedHorizontal: "square.stack.3d.forward"
+        }
+    }
+
+    /// Applied to the menu glyph (e.g. rotate infinity for vertical infinite).
+    var systemImageRotation: Angle {
+        switch self {
+        case .verticalInfinite: .degrees(90)
+        default: .zero
         }
     }
 
@@ -122,14 +130,14 @@ enum DemoKind: String, CaseIterable, Identifiable, Hashable {
 
     var footerLabel: String {
         if isStacked {
-            return axis == .horizontal ? "3-up infinite stack · H" : "3-up infinite stack · V"
+            return axis == .horizontal ? "3D infinite · H" : "3D infinite · V"
         }
         return configuration.isInfinite ? "Infinite loop" : "Finite range"
     }
 
     var footerSystemImage: String {
         if isStacked {
-            return axis == .horizontal ? "rectangle.stack.fill" : "rectangle.stack"
+            return axis == .horizontal ? "square.stack.3d.forward" : "square.stack.3d.up"
         }
         return configuration.isInfinite ? "infinity" : "arrow.left.arrow.right"
     }
