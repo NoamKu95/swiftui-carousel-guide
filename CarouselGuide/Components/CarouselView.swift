@@ -147,19 +147,24 @@ private struct FiniteCarouselLayout<Item: Identifiable & Hashable, Content: View
 
                 layout {
                     ForEach(items) { item in
+                        let horizontalHeight = CarouselHorizontalMetrics.pageItemHeight(
+                            forPageWidth: pageSize.width
+                        )
                         content(item)
-                            // Horizontal: width only — height comes from the card’s aspect ratio
-                            // (same as infinite UIKit host). Vertical: pageSize.height fills the page.
-                            .frame(
-                                width: configuration.axis == .horizontal ? pageSize.width : nil,
-                                height: configuration.axis == .vertical ? pageSize.height : nil
-                            )
                             .containerRelativeFrame(
                                 configuration.axis == .horizontal ? .horizontal : .vertical,
                                 count: 1,
                                 span: 1,
                                 spacing: configuration.spacing,
                                 alignment: .center
+                            )
+                            // Apply exact size AFTER containerRelativeFrame so H height is the
+                            // shared metrics value (not the stage). Matches infinite UIKit hosts.
+                            .frame(
+                                width: configuration.axis == .horizontal ? pageSize.width : nil,
+                                height: configuration.axis == .horizontal
+                                    ? horizontalHeight
+                                    : pageSize.height
                             )
                             .id(item.id)
                             .accessibilityAddTraits(item.id == selection ? .isSelected : [])

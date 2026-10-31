@@ -100,7 +100,12 @@ struct CarouselDemoView: View {
                 )
                 .padding(
                     kind.configuration.axis == .horizontal
-                        ? EdgeInsets(top: 8, leading: 0, bottom: 28, trailing: 0)
+                        ? EdgeInsets(
+                            top: CarouselHorizontalMetrics.contentPaddingTop,
+                            leading: 0,
+                            bottom: CarouselHorizontalMetrics.contentPaddingBottom,
+                            trailing: 0
+                          )
                         : EdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 36)
                 )
             }

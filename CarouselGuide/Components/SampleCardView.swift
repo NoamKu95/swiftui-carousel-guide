@@ -9,11 +9,6 @@ struct SampleCardView: View {
         case compact
     }
 
-    /// Featured (horizontal) cards use a fixed width:height ratio so finite SwiftUI and
-    /// infinite UIKit hosts resolve the **same pixel height** from the same page width.
-    /// Compact (vertical) fills the pager’s proposed page frame instead.
-    static let featuredAspectRatio: CGFloat = 4.0 / 3.0
-
     var body: some View {
         let chrome = ZStack(alignment: .bottomLeading) {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -56,8 +51,9 @@ struct SampleCardView: View {
 
         switch style {
         case .featured:
+            // Deterministic height from width — shared with UIKit via CarouselHorizontalMetrics.
             chrome
-                .aspectRatio(Self.featuredAspectRatio, contentMode: .fit)
+                .aspectRatio(CarouselHorizontalMetrics.cardAspectRatio, contentMode: .fit)
         case .compact:
             chrome
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -92,20 +92,17 @@ struct InfinitePagingScrollView<Item: Identifiable & Hashable, Page: View>: UIVi
 
 // MARK: - Page host wrapper
 
-/// Concrete hosted root so horizontal pages can apply finite’s **width-only** `.frame(width:)`
-/// without losing `Page` typing on `UIHostingController`.
-///
-/// Finite H: `.frame(width:)` + `containerRelativeFrame(.horizontal)` — height is content-sized
-/// (featured card aspect ratio). Infinite H mirrors that width constraint and measures height.
-/// Vertical passes `width: nil` and keeps the lean path so auto-scroll stays stable.
+/// Concrete hosted root with an exact pixel size so `UIHostingController` stays typed as
+/// `PageHost<Page>` (not `some View`). Horizontal uses `CarouselHorizontalMetrics` — the same
+/// width/height finite applies. Vertical passes `size: nil` (lean path for auto-scroll).
 private struct PageHost<Content: View>: View {
     let content: Content
-    var width: CGFloat?
+    var size: CGSize?
 
     var body: some View {
-        if let width {
+        if let size {
             content
-                .frame(width: width, alignment: .center)
+                .frame(width: size.width, height: size.height, alignment: .center)
         } else {
             content
         }
@@ -128,6 +125,7 @@ final class InfinitePagingController<Item: Identifiable & Hashable, Page: View>:
     private let scrollView = UIScrollView()
     private var hosts: [UIHostingController<PageHost<Page>>] = []
     private var pageLength: CGFloat = 0
+    private var lastLayoutBounds: CGSize = .zero
 
     private var loopedCount: Int { items.count * 3 }
     private var middleStart: Int { items.count }
@@ -162,9 +160,14 @@ final class InfinitePagingController<Item: Identifiable & Hashable, Page: View>:
             ? max(view.bounds.width - insets.leading - insets.trailing, 1)
             : max(view.bounds.height - insets.top - insets.bottom, 1)
 
-        if abs(length - pageLength) > 0.5 {
+        let boundsChanged = abs(view.bounds.width - lastLayoutBounds.width) > 0.5
+            || abs(view.bounds.height - lastLayoutBounds.height) > 0.5
+        let lengthChanged = abs(length - pageLength) > 0.5
+
+        if lengthChanged || boundsChanged {
             let previousIndex = currentPageIndex()
             pageLength = length
+            lastLayoutBounds = view.bounds.size
             layoutPages()
             setOffset(toPage: clampedMiddle(previousIndex), animated: false)
         }
@@ -206,20 +209,20 @@ final class InfinitePagingController<Item: Identifiable & Hashable, Page: View>:
 
         guard let pageBuilder, !items.isEmpty else { return }
 
-        let horizontal = axis == .horizontal
         for index in 0..<loopedCount {
-            let root = PageHost(content: pageBuilder(items[index % items.count]), width: nil)
+            let root = PageHost(content: pageBuilder(items[index % items.count]), size: nil)
             let host = UIHostingController(rootView: root)
             host.view.backgroundColor = .clear
-            host.view.clipsToBounds = false // allow card shadow like finite ScrollView
+            host.view.clipsToBounds = false // card shadow like finite ScrollView
             host.view.translatesAutoresizingMaskIntoConstraints = true
             host.view.autoresizingMask = []
+            // Frames are the only size authority — never intrinsic/contentSize (that oversized H).
             if #available(iOS 16.0, *) {
-                // H: measure intrinsic height (aspect-ratio card). V: frames stay authoritative.
-                host.sizingOptions = horizontal ? [.intrinsicContentSize] : []
+                host.sizingOptions = []
             }
-            if horizontal, #available(iOS 16.4, *) {
-                // Avoid safe-area padding inflating host height past finite’s SwiftUI card.
+            // Horizontal only: safe-area insets on the host inflated height past finite.
+            // Vertical keeps default safe-area behavior so auto-scroll layout stays stable.
+            if axis == .horizontal, #available(iOS 16.4, *) {
                 host.safeAreaRegions = []
             }
             addChild(host)
@@ -241,24 +244,21 @@ final class InfinitePagingController<Item: Identifiable & Hashable, Page: View>:
             let main = CGFloat(index) * strideLength
             let item = items[index % items.count]
             if horizontal {
-                // FiniteHorizontalDemo path:
-                //   content.frame(width: pageSize.width) + containerRelativeFrame(.horizontal)
-                //   → height from featured aspect ratio (+ demo padding), centered in stage.
-                // Match that pixel height via sizeThatFits; do NOT stretch to stage height.
-                host.rootView = PageHost(content: pageBuilder(item), width: pageLength)
-                let proposal = CGSize(width: pageLength, height: UIView.layoutFittingExpandedSize.height)
-                let fitted = host.sizeThatFits(in: proposal)
-                let height = min(max(fitted.height, 1), max(view.bounds.height, 1))
-                let y = (view.bounds.height - height) * 0.5
+                // Same pixel size as FiniteCarouselLayout horizontal pages:
+                // width = pageLength, height = aspect card + shared demo padding (NOT stage height).
+                let height = CarouselHorizontalMetrics.pageItemHeight(forPageWidth: pageLength)
+                let size = CGSize(width: pageLength, height: height)
+                host.rootView = PageHost(content: pageBuilder(item), size: size)
+                let y = max((view.bounds.height - height) * 0.5, 0)
                 host.view.frame = CGRect(
                     x: insets.leading + main,
                     y: y,
-                    width: pageLength,
-                    height: height
+                    width: size.width,
+                    height: size.height
                 )
             } else {
                 // Unchanged vertical frames / lean host — keep infinite V auto-scroll behavior.
-                host.rootView = PageHost(content: pageBuilder(item), width: nil)
+                host.rootView = PageHost(content: pageBuilder(item), size: nil)
                 host.view.frame = CGRect(
                     x: insets.leading,
                     y: insets.top + main,
