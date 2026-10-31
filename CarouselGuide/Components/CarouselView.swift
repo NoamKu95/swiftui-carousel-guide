@@ -148,11 +148,11 @@ private struct FiniteCarouselLayout<Item: Identifiable & Hashable, Content: View
                 layout {
                     ForEach(items) { item in
                         content(item)
-                            // Horizontal: width + stage height from pageSize (same contract as infinite).
-                            // Vertical: height from pageSize; width comes from containerRelativeFrame.
+                            // Horizontal: width only — height comes from the card’s aspect ratio
+                            // (same as infinite UIKit host). Vertical: pageSize.height fills the page.
                             .frame(
                                 width: configuration.axis == .horizontal ? pageSize.width : nil,
-                                height: pageSize.height
+                                height: configuration.axis == .vertical ? pageSize.height : nil
                             )
                             .containerRelativeFrame(
                                 configuration.axis == .horizontal ? .horizontal : .vertical,

@@ -9,8 +9,13 @@ struct SampleCardView: View {
         case compact
     }
 
+    /// Featured (horizontal) cards use a fixed width:height ratio so finite SwiftUI and
+    /// infinite UIKit hosts resolve the **same pixel height** from the same page width.
+    /// Compact (vertical) fills the pager’s proposed page frame instead.
+    static let featuredAspectRatio: CGFloat = 4.0 / 3.0
+
     var body: some View {
-        ZStack(alignment: .bottomLeading) {
+        let chrome = ZStack(alignment: .bottomLeading) {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(
                     LinearGradient(
@@ -20,16 +25,13 @@ struct SampleCardView: View {
                     )
                 )
 
-            GeometryReader { proxy in
-                Image(systemName: item.symbolName)
-                    .font(.system(size: style == .featured ? 92 : 64, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.18))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                    .padding(style == .featured ? 24 : 18)
-                    .rotationEffect(.degrees(-8))
-                    .accessibilityHidden(true)
-                    .frame(width: proxy.size.width, height: proxy.size.height)
-            }
+            Image(systemName: item.symbolName)
+                .font(.system(size: style == .featured ? 92 : 64, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.18))
+                .rotationEffect(.degrees(-8))
+                .padding(style == .featured ? 24 : 18)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 8) {
                 Text(item.title)
@@ -51,11 +53,20 @@ struct SampleCardView: View {
         .shadow(color: item.gradientColors.last?.opacity(0.35) ?? .black.opacity(0.2), radius: 16, y: 10)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(item.title). \(item.subtitle)")
+
+        switch style {
+        case .featured:
+            chrome
+                .aspectRatio(Self.featuredAspectRatio, contentMode: .fit)
+        case .compact:
+            chrome
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
     }
 }
 
 #Preview {
     SampleCardView(item: SampleData.destinations[0])
-        .frame(height: 240)
+        .frame(width: 320)
         .padding()
 }
