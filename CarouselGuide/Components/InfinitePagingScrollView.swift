@@ -143,6 +143,7 @@ final class InfinitePagingController<Item: Identifiable & Hashable, Page: View>:
         scrollView.showsHorizontalScrollIndicator = false
         scrollView.bounces = true
         scrollView.decelerationRate = .fast
+        scrollView.isDirectionalLockEnabled = true
         scrollView.contentInsetAdjustmentBehavior = .never
         scrollView.clipsToBounds = true
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -326,15 +327,28 @@ final class InfinitePagingController<Item: Identifiable & Hashable, Page: View>:
     ) {
         guard strideLength > 0 else { return }
         let horizontal = axis == .horizontal
-        let proposed = horizontal ? targetContentOffset.pointee.x : targetContentOffset.pointee.y
-        var index = Int(round(proposed / strideLength))
-
+        // Use the *current* offset (where the finger lifted), not UIKit's projected
+        // target — then decide the page ourselves. The old code rounded the projected
+        // target AND added/subtracted a page from velocity (with inverted signs), so
+        // short flicks often canceled back to the same page (needed a long drag past
+        // 50%), while other flicks double-advanced and looked like an instant swap.
+        let current = horizontal ? scrollView.contentOffset.x : scrollView.contentOffset.y
         let v = horizontal ? velocity.x : velocity.y
-        if v < -0.3 { index += 1 }
-        if v > 0.3 { index -= 1 }
+        let resting = current / strideLength
 
-        index = min(max(index, 0), max(loopedCount - 1, 0))
-        let snapped = CGFloat(index) * strideLength
+        let index: Int
+        if v > 0.2 {
+            // Positive velocity → higher content offset → next page.
+            index = Int(floor(resting)) + 1
+        } else if v < -0.2 {
+            index = Int(ceil(resting)) - 1
+        } else {
+            // Slow drag: classic midpoint snap.
+            index = Int(resting.rounded())
+        }
+
+        let clamped = min(max(index, 0), max(loopedCount - 1, 0))
+        let snapped = CGFloat(clamped) * strideLength
         if horizontal {
             targetContentOffset.pointee.x = snapped
         } else {

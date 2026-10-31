@@ -187,8 +187,10 @@ private struct FiniteCarouselLayout<Item: Identifiable & Hashable, Content: View
         }
     }
 
+    /// Pause-only signal for auto-scroll. Keep minimumDistance high so short flicks
+    /// stay owned by ScrollView’s paging instead of this gesture.
     private var dragGesture: some Gesture {
-        DragGesture(minimumDistance: 4)
+        DragGesture(minimumDistance: 20)
             .onChanged { _ in
                 if !isDragging { isDragging = true }
             }
