@@ -65,7 +65,7 @@ CarouselView(
 
 ## Guide concepts
 
-This repo implements the patterns described in the Medium Articles project guide:
+This repo implements the patterns in [`GUIDE.md`](./GUIDE.md) (also published under the Medium Articles project as `docs/swiftui-carousels-guide.md`):
 
 - Snapping with `scrollTargetBehavior(.viewAligned)` and `scrollPosition(id:)`
 - Infinite looping via a triple-buffered item list + silent recenter
