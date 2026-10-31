@@ -3,40 +3,40 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		B2F8C1D04B7E4E1A9C3D5E60 /* InfinitePagingScrollView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2F8C1D04B7E4E1A9C3D5E60 /* InfinitePagingScrollView.swift */; };
+		B0E7F0B89F49645CDAC81F21 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0E7F0B89F49645CDAC81F21A /* Assets.xcassets */; };
 		B1006E96822A45559C12FC92 /* CarouselGuideApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1006E96822A45559C12FC92 /* CarouselGuideApp.swift */; };
 		B1D6A5EA51434AA694545E64 /* CarouselItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1D6A5EA51434AA694545E64 /* CarouselItem.swift */; };
-		B34B81CFBAE149E38410D049 /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 834B81CFBAE149E38410D049 /* SampleData.swift */; };
-		BAA7C4C29DF540DB95A9CAFC /* CarouselConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AA7C4C29DF540DB95A9CAFC /* CarouselConfiguration.swift */; };
-		B6CE3F5AD8924BD6B2E17D2C /* SampleCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6CE3F5AD8924BD6B2E17D2C /* SampleCardView.swift */; };
-		B7C961A99F22400681C710AF /* PageIndicatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37C961A99F22400681C710AF /* PageIndicatorView.swift */; };
-		B6CE78D918304028918E6CA7 /* AutoScrollController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6CE78D918304028918E6CA7 /* AutoScrollController.swift */; };
-		B684DC4E6F184347882CB4BC /* CarouselView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E684DC4E6F184347882CB4BC /* CarouselView.swift */; };
-		B4D4B2341A78401E959EB3A1 /* DemoKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4D4B2341A78401E959EB3A1 /* DemoKind.swift */; };
 		B2BCEB30C66042F5B36C5472 /* DemoMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92BCEB30C66042F5B36C5472 /* DemoMenuView.swift */; };
+		B2F8C1D04B7E4E1A9C3D5E60 /* InfinitePagingScrollView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2F8C1D04B7E4E1A9C3D5E60 /* InfinitePagingScrollView.swift */; };
+		B34B81CFBAE149E38410D049 /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 834B81CFBAE149E38410D049 /* SampleData.swift */; };
+		B4D4B2341A78401E959EB3A1 /* DemoKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4D4B2341A78401E959EB3A1 /* DemoKind.swift */; };
+		B684DC4E6F184347882CB4BC /* CarouselView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E684DC4E6F184347882CB4BC /* CarouselView.swift */; };
+		B6CE3F5AD8924BD6B2E17D2C /* SampleCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6CE3F5AD8924BD6B2E17D2C /* SampleCardView.swift */; };
+		B6CE78D918304028918E6CA7 /* AutoScrollController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6CE78D918304028918E6CA7 /* AutoScrollController.swift */; };
 		B74F7217F8DC4F8BB28AF513 /* CarouselDemoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 774F7217F8DC4F8BB28AF513 /* CarouselDemoView.swift */; };
-		B0E7F0B89F49645CDAC81F21 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0E7F0B89F49645CDAC81F21A /* Assets.xcassets */; };
+		B7C961A99F22400681C710AF /* PageIndicatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37C961A99F22400681C710AF /* PageIndicatorView.swift */; };
+		BAA7C4C29DF540DB95A9CAFC /* CarouselConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AA7C4C29DF540DB95A9CAFC /* CarouselConfiguration.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		A2F8C1D04B7E4E1A9C3D5E60 /* InfinitePagingScrollView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfinitePagingScrollView.swift; sourceTree = "<group>"; };
-		C5AC5A3EED3A43A8BDAF4AEF /* CarouselGuide.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CarouselGuide.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		E1006E96822A45559C12FC92 /* CarouselGuideApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarouselGuideApp.swift; sourceTree = "<group>"; };
-		D1D6A5EA51434AA694545E64 /* CarouselItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarouselItem.swift; sourceTree = "<group>"; };
-		834B81CFBAE149E38410D049 /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
-		6AA7C4C29DF540DB95A9CAFC /* CarouselConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarouselConfiguration.swift; sourceTree = "<group>"; };
-		A6CE3F5AD8924BD6B2E17D2C /* SampleCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleCardView.swift; sourceTree = "<group>"; };
-		37C961A99F22400681C710AF /* PageIndicatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageIndicatorView.swift; sourceTree = "<group>"; };
-		E6CE78D918304028918E6CA7 /* AutoScrollController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoScrollController.swift; sourceTree = "<group>"; };
-		E684DC4E6F184347882CB4BC /* CarouselView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarouselView.swift; sourceTree = "<group>"; };
-		D4D4B2341A78401E959EB3A1 /* DemoKind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoKind.swift; sourceTree = "<group>"; };
-		92BCEB30C66042F5B36C5472 /* DemoMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoMenuView.swift; sourceTree = "<group>"; };
-		774F7217F8DC4F8BB28AF513 /* CarouselDemoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarouselDemoView.swift; sourceTree = "<group>"; };
 		0E7F0B89F49645CDAC81F21A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		37C961A99F22400681C710AF /* PageIndicatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageIndicatorView.swift; sourceTree = "<group>"; };
+		6AA7C4C29DF540DB95A9CAFC /* CarouselConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarouselConfiguration.swift; sourceTree = "<group>"; };
+		774F7217F8DC4F8BB28AF513 /* CarouselDemoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarouselDemoView.swift; sourceTree = "<group>"; };
+		834B81CFBAE149E38410D049 /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
+		92BCEB30C66042F5B36C5472 /* DemoMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoMenuView.swift; sourceTree = "<group>"; };
+		A2F8C1D04B7E4E1A9C3D5E60 /* InfinitePagingScrollView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfinitePagingScrollView.swift; sourceTree = "<group>"; };
+		A6CE3F5AD8924BD6B2E17D2C /* SampleCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleCardView.swift; sourceTree = "<group>"; };
+		C5AC5A3EED3A43A8BDAF4AEF /* CarouselGuide.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CarouselGuide.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D1D6A5EA51434AA694545E64 /* CarouselItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarouselItem.swift; sourceTree = "<group>"; };
+		D4D4B2341A78401E959EB3A1 /* DemoKind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoKind.swift; sourceTree = "<group>"; };
+		E1006E96822A45559C12FC92 /* CarouselGuideApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarouselGuideApp.swift; sourceTree = "<group>"; };
+		E684DC4E6F184347882CB4BC /* CarouselView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarouselView.swift; sourceTree = "<group>"; };
+		E6CE78D918304028918E6CA7 /* AutoScrollController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoScrollController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -56,14 +56,6 @@
 				2CB73D8D399F4654BF0696AB /* CarouselGuide */,
 				A5C40C0D409445AEA55595C2 /* Products */,
 			);
-			sourceTree = "<group>";
-		};
-		A5C40C0D409445AEA55595C2 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				C5AC5A3EED3A43A8BDAF4AEF /* CarouselGuide.app */,
-			);
-			name = Products;
 			sourceTree = "<group>";
 		};
 		2CB73D8D399F4654BF0696AB /* CarouselGuide */ = {
@@ -116,6 +108,14 @@
 				0E7F0B89F49645CDAC81F21A /* Assets.xcassets */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		A5C40C0D409445AEA55595C2 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C5AC5A3EED3A43A8BDAF4AEF /* CarouselGuide.app */,
+			);
+			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -268,6 +268,70 @@
 			};
 			name = Debug;
 		};
+		7775EB6D898849F5B85EB198 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 346FGQ8ZC8;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Carousel Guide";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mediumarticles.CarouselGuide;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B78044AC94704AA98251D4C4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 346FGQ8ZC8;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Carousel Guide";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mediumarticles.CarouselGuide;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		CA51A2BC0D8D4C79B2D570EE /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -321,70 +385,6 @@
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
-			};
-			name = Release;
-		};
-		7775EB6D898849F5B85EB198 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "Carousel Guide";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.mediumarticles.CarouselGuide;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		B78044AC94704AA98251D4C4 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "Carousel Guide";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.mediumarticles.CarouselGuide;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
