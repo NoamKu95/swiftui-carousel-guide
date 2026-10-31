@@ -53,7 +53,7 @@ struct SampleCardView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .shadow(color: .primary.opacity(0.18), radius: 16, y: 10)
+        .shadow(color: .black.opacity(0.22), radius: 16, y: 10)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(item.title). \(item.subtitle)")
     }

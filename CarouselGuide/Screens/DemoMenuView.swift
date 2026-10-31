@@ -97,7 +97,7 @@ private struct DemoRow: View {
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(Color(.secondarySystemBackground))
-                .shadow(color: .primary.opacity(0.08), radius: 12, y: 6)
+                .shadow(color: .black.opacity(0.12), radius: 12, y: 6)
         )
         .accessibilityElement(children: .combine)
         .accessibilityHint("Opens the \(kind.title) demo")

@@ -132,9 +132,9 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
                         // Flatten + draw opaque so the focused card fully covers neighbors.
                         .compositingGroup()
                         .opacity(1)
-                        // Stronger lift shadow on the focused card so it reads in front.
+                        // Dark shadow (not .primary) so it stays visible on light cards in dark mode.
                         .shadow(
-                            color: .primary.opacity(isCenter ? 0.28 : 0.08),
+                            color: .black.opacity(isCenter ? 0.35 : 0.14),
                             radius: isCenter ? 18 : 6,
                             y: isCenter ? 10 : 3
                         )
