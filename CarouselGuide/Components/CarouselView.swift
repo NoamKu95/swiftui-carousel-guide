@@ -33,17 +33,21 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
                     description: Text("Provide at least one item to render a carousel.")
                 )
             } else if configuration.isInfinite {
-                InfinitePagingScrollView(
-                    items: items,
-                    axis: configuration.axis,
-                    spacing: configuration.spacing,
-                    contentInsets: configuration.contentInsets,
-                    selection: resolvedSelection,
-                    isDragging: $isDragging,
-                    autoAdvanceTick: autoScroll.tick,
-                    autoScrollEnabled: configuration.autoScrollEnabled,
-                    pageBuilder: content
-                )
+                // Same GeometryReader shell as FiniteCarouselLayout so the pager is sized to the
+                // stage — not to UIScrollView.contentSize (that made infinite H cards much taller).
+                GeometryReader { _ in
+                    InfinitePagingScrollView(
+                        items: items,
+                        axis: configuration.axis,
+                        spacing: configuration.spacing,
+                        contentInsets: configuration.contentInsets,
+                        selection: resolvedSelection,
+                        isDragging: $isDragging,
+                        autoAdvanceTick: autoScroll.tick,
+                        autoScrollEnabled: configuration.autoScrollEnabled,
+                        pageBuilder: content
+                    )
+                }
             } else {
                 FiniteCarouselLayout(
                     items: items,
@@ -141,24 +145,26 @@ private struct FiniteCarouselLayout<Item: Identifiable & Hashable, Content: View
             ? AnyLayout(HStackLayout(spacing: configuration.spacing))
             : AnyLayout(VStackLayout(spacing: configuration.spacing))
 
-        layout {
-            ForEach(items) { item in
-                content(item)
-                    .frame(
-                        width: configuration.axis == .horizontal ? pageSize.width : nil,
-                        height: configuration.axis == .vertical ? pageSize.height : nil
-                    )
-                    .containerRelativeFrame(
-                        configuration.axis == .horizontal ? .horizontal : .vertical,
-                        count: 1,
-                        span: 1,
-                        spacing: configuration.spacing,
-                        alignment: .center
-                    )
-                    .id(item.id)
-                    .accessibilityAddTraits(item.id == selection ? .isSelected : [])
-            }
-        }
+                layout {
+                    ForEach(items) { item in
+                        content(item)
+                            // Horizontal: width + stage height from pageSize (same contract as infinite).
+                            // Vertical: height from pageSize; width comes from containerRelativeFrame.
+                            .frame(
+                                width: configuration.axis == .horizontal ? pageSize.width : nil,
+                                height: pageSize.height
+                            )
+                            .containerRelativeFrame(
+                                configuration.axis == .horizontal ? .horizontal : .vertical,
+                                count: 1,
+                                span: 1,
+                                spacing: configuration.spacing,
+                                alignment: .center
+                            )
+                            .id(item.id)
+                            .accessibilityAddTraits(item.id == selection ? .isSelected : [])
+                    }
+                }
     }
 
     private func pageSize(in size: CGSize) -> CGSize {
