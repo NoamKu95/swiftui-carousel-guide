@@ -1,11 +1,12 @@
 import SwiftUI
 
-/// Infinite **3-up** carousel: cards sit on a vertical (or horizontal) **3D circle**.
+/// Infinite **3-up** carousel: cards sit on a vertical or horizontal **3D circle**.
 ///
 /// At rest you see center + neighbors. On a slow swipe the stack rotates as a
-/// wheel — the top card travels *behind* the center and emerges as the bottom
-/// card (and the reverse for the other direction). Dropping the linear
-/// “slide off / slide on” path is what sells the circle.
+/// wheel — the leading neighbor travels *behind* the center and emerges on the
+/// trailing side (top→bottom when `axis == .vertical`, left→right when
+/// `.horizontal`). Dropping the linear “slide off / slide on” path is what
+/// sells the circle.
 ///
 /// `progress` is continuous (`internalIndex − dragFraction`), so every frame of
 /// a slow drag remaps angles. After a committed step we remap the virtual index
@@ -21,14 +22,33 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
     /// Scale applied at a rest neighbor (`|Δ| == 1`) when measuring the stack.
     private static var neighborScaleAtOne: CGFloat { 0.82 }
 
-    /// Container extent the caller should reserve so rest neighbors aren’t clipped.
+    /// Card size along the scroll axis (height when vertical, width when horizontal).
+    static func cardMainLength(forCardCrossAxis crossAxis: CGFloat,
+                               aspectRatio: CGFloat = 1.586,
+                               axis: CarouselAxis = .vertical) -> CGFloat {
+        axis == .vertical ? crossAxis / aspectRatio : crossAxis * aspectRatio
+    }
+
+    /// Container extent along the scroll axis so rest neighbors aren’t clipped.
     ///
     /// `2 × spacing + cardMain × neighborScale` (+ slack for shadow / mid-orbit).
-    static func stackExtent(forCardCrossAxis crossAxis: CGFloat, aspectRatio: CGFloat = 1.586) -> CGFloat {
-        let cardMain = crossAxis / aspectRatio
+    /// Pass the card’s *cross* size (width for vertical, height for horizontal).
+    static func stackExtent(forCardCrossAxis crossAxis: CGFloat,
+                            aspectRatio: CGFloat = 1.586,
+                            axis: CarouselAxis = .vertical) -> CGFloat {
+        let cardMain = cardMainLength(forCardCrossAxis: crossAxis, aspectRatio: aspectRatio, axis: axis)
         let spacing = cardMain * interCardSpacingRatio
         let slack = cardMain * 0.18
         return 2 * spacing + cardMain * neighborScaleAtOne + slack
+    }
+
+    /// Inverse of `stackExtent` — card cross size that makes the stack fit in `extent`.
+    static func cardCrossAxis(fittingStackExtent extent: CGFloat,
+                              aspectRatio: CGFloat = 1.586,
+                              axis: CarouselAxis = .vertical) -> CGFloat {
+        let mainPerCross = axis == .vertical ? (1 / aspectRatio) : aspectRatio
+        let multiplier = 2 * interCardSpacingRatio + neighborScaleAtOne + 0.18
+        return extent / (mainPerCross * multiplier)
     }
 
     // MARK: Inputs

@@ -104,7 +104,12 @@ struct CarouselDemoView: View {
     }
 
     private var modeCaption: String {
-        if kind.isStackedThreeInfinite {
+        if kind == .stackedThreeInfiniteHorizontal {
+            return autoScrollEnabled
+                ? "Cards ride a horizontal 3D circle — the left card travels behind and becomes the right. Auto-advances the wheel."
+                : "Drag slowly to watch the circle rotate. The leading card arcs behind the center and emerges on the trailing side."
+        }
+        if kind == .stackedThreeInfinite {
             return autoScrollEnabled
                 ? "Cards ride a 3D circle — the top card travels behind and becomes the bottom. Auto-advances the wheel."
                 : "Drag slowly to watch the 3D circle rotate. The top card moves behind the center and emerges as the bottom."
@@ -155,39 +160,86 @@ struct CarouselDemoView: View {
         .padding(.horizontal, kind.configuration.axis == .vertical ? 12 : 0)
     }
 
-    /// Matches JuniorCardSelectionSV: carousel + trailing indicator, height from width.
+    /// Vertical stack: carousel + trailing indicator, height from width.
+    /// Horizontal stack: carousel + bottom indicator, width fitted to the stage.
     private var stackedStage: some View {
-        GeometryReader { geo in
-            let indicatorWidth: CGFloat = 4
-            let spacing: CGFloat = 16
-            let carouselWidth = max(geo.size.width - indicatorWidth - spacing, 120)
+        let axis = kind.configuration.axis
+        return GeometryReader { geo in
             let aspect: CGFloat = 1.586
-            let stackHeight = StackedInfiniteCarouselView<CarouselItem, EmptyView>
-                .stackExtent(forCardCrossAxis: carouselWidth, aspectRatio: aspect)
+            let indicatorThickness: CGFloat = 4
+            let spacing: CGFloat = 16
 
-            HStack(spacing: spacing) {
-                StackedInfiniteCarouselView(
-                    items: kind.items,
-                    currentIndex: $stackedIndex,
-                    axis: .vertical,
-                    cardAspectRatio: aspect,
-                    autoAdvanceTick: stackedAutoScroll.tick,
-                    autoScrollEnabled: autoScrollEnabled,
-                    onUserDrag: { stackedAutoScroll.pauseForUserInteraction() }
-                ) { item in
-                    SampleCardView(item: item, style: .featured)
+            if axis == .horizontal {
+                let availableHeight = max(geo.size.height - indicatorThickness - spacing, 100)
+                // Shrink card height so the full 3-up wheel fits in the stage width.
+                let heightFittingWidth = StackedInfiniteCarouselView<CarouselItem, EmptyView>
+                    .cardCrossAxis(
+                        fittingStackExtent: geo.size.width,
+                        aspectRatio: aspect,
+                        axis: .horizontal
+                    )
+                let cardHeight = min(availableHeight, heightFittingWidth)
+                let stackWidth = StackedInfiniteCarouselView<CarouselItem, EmptyView>
+                    .stackExtent(
+                        forCardCrossAxis: cardHeight,
+                        aspectRatio: aspect,
+                        axis: .horizontal
+                    )
+
+                VStack(spacing: spacing) {
+                    StackedInfiniteCarouselView(
+                        items: kind.items,
+                        currentIndex: $stackedIndex,
+                        axis: .horizontal,
+                        cardAspectRatio: aspect,
+                        autoAdvanceTick: stackedAutoScroll.tick,
+                        autoScrollEnabled: autoScrollEnabled,
+                        onUserDrag: { stackedAutoScroll.pauseForUserInteraction() }
+                    ) { item in
+                        SampleCardView(item: item, style: .featured)
+                    }
+                    .frame(width: stackWidth, height: cardHeight)
+
+                    PageIndicatorView(
+                        count: kind.items.count,
+                        currentIndex: stackedIndex,
+                        axis: .horizontal
+                    )
+                    .frame(height: indicatorThickness)
                 }
-                // Height from stackExtent so ±1 neighbors fit without clipping.
-                .frame(width: carouselWidth, height: stackHeight)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            } else {
+                let carouselWidth = max(geo.size.width - indicatorThickness - spacing, 120)
+                let stackHeight = StackedInfiniteCarouselView<CarouselItem, EmptyView>
+                    .stackExtent(
+                        forCardCrossAxis: carouselWidth,
+                        aspectRatio: aspect,
+                        axis: .vertical
+                    )
 
-                PageIndicatorView(
-                    count: kind.items.count,
-                    currentIndex: stackedIndex,
-                    axis: .vertical
-                )
-                .frame(width: indicatorWidth)
+                HStack(spacing: spacing) {
+                    StackedInfiniteCarouselView(
+                        items: kind.items,
+                        currentIndex: $stackedIndex,
+                        axis: .vertical,
+                        cardAspectRatio: aspect,
+                        autoAdvanceTick: stackedAutoScroll.tick,
+                        autoScrollEnabled: autoScrollEnabled,
+                        onUserDrag: { stackedAutoScroll.pauseForUserInteraction() }
+                    ) { item in
+                        SampleCardView(item: item, style: .featured)
+                    }
+                    .frame(width: carouselWidth, height: stackHeight)
+
+                    PageIndicatorView(
+                        count: kind.items.count,
+                        currentIndex: stackedIndex,
+                        axis: .vertical
+                    )
+                    .frame(width: indicatorThickness)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
         .padding(.horizontal, 20)
     }
@@ -196,10 +248,14 @@ struct CarouselDemoView: View {
         HStack(spacing: 12) {
             Label(
                 kind.isStackedThreeInfinite
-                    ? "3-up infinite stack"
+                    ? (kind.configuration.axis == .horizontal
+                        ? "3-up infinite stack · H"
+                        : "3-up infinite stack · V")
                     : (kind.configuration.isInfinite ? "Infinite loop" : "Finite range"),
                 systemImage: kind.isStackedThreeInfinite
-                    ? "rectangle.stack"
+                    ? (kind.configuration.axis == .horizontal
+                        ? "rectangle.stack.fill"
+                        : "rectangle.stack")
                     : (kind.configuration.isInfinite ? "infinity" : "arrow.left.arrow.right")
             )
             .foregroundStyle(.secondary)
@@ -237,8 +293,14 @@ struct CarouselDemoView: View {
     }
 }
 
-#Preview("3-Up Stack") {
+#Preview("3-Up Stack Vertical") {
     NavigationStack {
         CarouselDemoView(kind: .stackedThreeInfinite)
+    }
+}
+
+#Preview("3-Up Stack Horizontal") {
+    NavigationStack {
+        CarouselDemoView(kind: .stackedThreeInfiniteHorizontal)
     }
 }

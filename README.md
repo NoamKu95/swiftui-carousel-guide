@@ -16,7 +16,7 @@ No CocoaPods/SPM packages are required — the app is pure SwiftUI.
 
 ## Demo map
 
-The root menu lists five carousel kinds. Each demo page has an **Auto / Manual** segmented control:
+The root menu lists six carousel kinds. Each demo page has an **Auto / Manual** segmented control:
 
 | Demo | Axis | Looping | Sample content |
 |------|------|---------|----------------|
@@ -24,7 +24,8 @@ The root menu lists five carousel kinds. Each demo page has an **Auto / Manual**
 | Vertical Carousel | Vertical | Finite | Playlists |
 | Infinite Horizontal | Horizontal | Seamless loop | Travel destinations |
 | Infinite Vertical | Vertical | Seamless loop | Playlists |
-| 3-Up Infinite Stack | Vertical stack | Infinite peek | Card designs |
+| 3-Up Stack (Vertical) | Vertical circle | Infinite 3-up | Card designs |
+| 3-Up Stack (Horizontal) | Horizontal circle | Infinite 3-up | Card designs |
 
 On **Auto**, the carousel advances on an adjustable interval, pauses while you drag, then resumes. On **Manual**, nothing auto-advances.
 
@@ -40,7 +41,7 @@ CarouselGuide/
 │   ├── CarouselConfiguration.swift # Axis, looping, auto-scroll knobs
 │   ├── CarouselView.swift          # Finite SwiftUI + infinite UIKit pager
 │   ├── InfinitePagingScrollView.swift # Infinite H/V via animated contentOffset
-│   ├── StackedInfiniteCarouselView.swift # 3-up infinite peek stack
+│   ├── StackedInfiniteCarouselView.swift # 3-up infinite circle stack (V + H)
 │   ├── AutoScrollController.swift  # Pause / resume timer
 │   ├── SampleCardView.swift
 │   └── PageIndicatorView.swift

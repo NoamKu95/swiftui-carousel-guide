@@ -6,9 +6,10 @@ SwiftUI finally gives us first-class paging primitives — `scrollTargetBehavior
 2. Regular vertical carousel  
 3. Horizontal infinite (seamless loop)  
 4. Vertical infinite (seamless loop)  
-5. **3-up infinite stack** — cards on a 3D circle; top travels behind and becomes bottom (card-picker style)
+5. **3-up infinite stack (vertical)** — cards on a 3D circle; top travels behind and becomes bottom  
+6. **3-up infinite stack (horizontal)** — same wheel on the X axis; left travels behind and becomes right  
 
-The first four share `CarouselView`; the 3-up stack is `StackedInfiniteCarouselView`. All live in the companion demo app.
+The first four share `CarouselView`; both 3-up stacks use `StackedInfiniteCarouselView(axis:)`. All live in the companion demo app.
 
 > **Companion app:** https://github.com/NoamKu95/swiftui-carousel-guide — open `CarouselGuide.xcodeproj` (iOS 17+) and explore each demo from the root menu. Every page has an Auto / Manual control.
 
@@ -210,20 +211,20 @@ Same UIKit `setContentOffset(_:animated:)` pager as horizontal infinite — only
 
 ---
 
-## 5. 3-up infinite stack (3D circle)
+## 5–6. 3-up infinite stack (3D circle) — vertical & horizontal
 
-Full-page paging is wrong when the product wants **three cards visible** — a focused center with neighbors (card design pickers). Don’t use `ScrollView` paging: place every item on a ring and drive a continuous `progress` with the drag.
+Full-page paging is wrong when the product wants **three cards visible** — a focused center with neighbors (card design pickers). Don’t use `ScrollView` paging: place every item on a ring and drive a continuous `progress` with the drag. The same component serves both axes via `axis: .vertical` / `.horizontal`.
 
 ```swift
 let progress = CGFloat(internalIndex) - dragFraction   // live while dragging
 let delta = ringDelta(itemIndex:i, progress:progress)  // shortest signed slots
 let angle = delta * (2 * .pi / CGFloat(itemCount))
-let y = sin(angle) * radius          // radius ≈ spacing / sin(2π/n)
+let orbit = sin(angle) * radius      // → y when vertical, x when horizontal
 let depth = cos(angle)               // 1 front … −1 behind
 let scale = 0.70 + 0.30 * ((depth + 1) / 2)
 ```
 
-A slow swipe rotates the wheel in place: the **top card arcs behind the center and becomes the bottom** (and the reverse the other way) — not a linear “slide off / slide on.” Depth via `scale` + `zIndex` only; cards stay face-on (no tilt). Keep cards opaque. Infinite looping remaps after settle (`dragOffset = ±pageExtent` → `index ± 1, dragOffset = 0`). Size with `StackedInfiniteCarouselView.stackExtent(…)` so rest neighbors aren’t clipped.
+A slow swipe rotates the wheel in place: the **leading neighbor arcs behind the center and becomes the trailing neighbor** (top→bottom vertically, left→right horizontally) — not a linear “slide off / slide on.” Depth via `scale` + `zIndex` only; cards stay face-on (no tilt). Keep cards opaque. Infinite looping remaps after settle (`dragOffset = ±pageExtent` → `index ± 1, dragOffset = 0`). Size with `stackExtent(forCardCrossAxis:aspectRatio:axis:)` (and `cardCrossAxis(fittingStackExtent:…)` when fitting a horizontal wheel into a fixed width) so rest neighbors aren’t clipped.
 
 ---
 
@@ -363,7 +364,7 @@ Before you ship a carousel:
 |------|------|
 | `CarouselView.swift` | Finite SwiftUI layout + wires infinite UIKit pager |
 | `InfinitePagingScrollView.swift` | Infinite H/V pager via animated `contentOffset`. H pages fill the offered stage (same pageSize as finite); V lean path unchanged. |
-| `StackedInfiniteCarouselView.swift` | 3-up infinite circle stack (angle → y / depth / scale) |
+| `StackedInfiniteCarouselView.swift` | 3-up infinite circle stack, V + H (angle → orbit / depth / scale) |
 | `AutoScrollController.swift` | Timer lifecycle with resume delay |
 | `CarouselConfiguration.swift` | Shared knobs / axis helpers |
 | `CarouselDemoView.swift` | Auto/Manual UX pattern |

@@ -6,6 +6,7 @@ enum DemoKind: String, CaseIterable, Identifiable, Hashable {
     case horizontalInfinite
     case verticalInfinite
     case stackedThreeInfinite
+    case stackedThreeInfiniteHorizontal
 
     var id: String { rawValue }
 
@@ -15,7 +16,8 @@ enum DemoKind: String, CaseIterable, Identifiable, Hashable {
         case .vertical: "Vertical Carousel"
         case .horizontalInfinite: "Infinite Horizontal"
         case .verticalInfinite: "Infinite Vertical"
-        case .stackedThreeInfinite: "3-Up Infinite Stack"
+        case .stackedThreeInfinite: "3-Up Stack (Vertical)"
+        case .stackedThreeInfiniteHorizontal: "3-Up Stack (Horizontal)"
         }
     }
 
@@ -30,7 +32,9 @@ enum DemoKind: String, CaseIterable, Identifiable, Hashable {
         case .verticalInfinite:
             "Endless vertical paging without a hard edge"
         case .stackedThreeInfinite:
-            "Three cards on screen — center focused, neighbors peek with scale"
+            "Three cards on a vertical 3D circle — top arcs behind to become bottom"
+        case .stackedThreeInfiniteHorizontal:
+            "Three cards on a horizontal 3D circle — left arcs behind to become right"
         }
     }
 
@@ -41,11 +45,14 @@ enum DemoKind: String, CaseIterable, Identifiable, Hashable {
         case .horizontalInfinite: "infinity.circle"
         case .verticalInfinite: "arrow.up.arrow.down.circle"
         case .stackedThreeInfinite: "rectangle.stack"
+        case .stackedThreeInfiniteHorizontal: "rectangle.stack.fill"
         }
     }
 
-    /// True for the stacked peek carousel (not `CarouselView` / UIScrollView).
-    var isStackedThreeInfinite: Bool { self == .stackedThreeInfinite }
+    /// True for either stacked peek carousel (not `CarouselView` / UIScrollView).
+    var isStackedThreeInfinite: Bool {
+        self == .stackedThreeInfinite || self == .stackedThreeInfiniteHorizontal
+    }
 
     var configuration: CarouselConfiguration {
         switch self {
@@ -66,8 +73,9 @@ enum DemoKind: String, CaseIterable, Identifiable, Hashable {
                 contentInsets: EdgeInsets(top: 24, leading: 20, bottom: 24, trailing: 20)
             )
         case .stackedThreeInfinite:
-            // Axis vertical to match the reference card-selection stack.
             CarouselConfiguration(axis: .vertical, isInfinite: true)
+        case .stackedThreeInfiniteHorizontal:
+            CarouselConfiguration(axis: .horizontal, isInfinite: true)
         }
     }
 
@@ -77,7 +85,7 @@ enum DemoKind: String, CaseIterable, Identifiable, Hashable {
             SampleData.destinations
         case .vertical, .verticalInfinite:
             SampleData.playlists
-        case .stackedThreeInfinite:
+        case .stackedThreeInfinite, .stackedThreeInfiniteHorizontal:
             SampleData.cardDesigns
         }
     }
