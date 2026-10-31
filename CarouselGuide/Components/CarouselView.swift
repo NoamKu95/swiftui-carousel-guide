@@ -13,6 +13,8 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
 
     @StateObject private var autoScroll = AutoScrollController()
     @State private var isDragging = false
+    /// Bumped on each auto-advance tick so infinite layouts can scroll to the next adjacent page.
+    @State private var autoAdvanceToken: UInt64 = 0
 
     private var resolvedSelection: Binding<Item.ID?> {
         Binding(
@@ -35,6 +37,7 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
                     configuration: configuration,
                     selection: resolvedSelection,
                     isDragging: $isDragging,
+                    autoAdvanceToken: autoAdvanceToken,
                     content: content
                 )
             } else {
@@ -82,20 +85,18 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
 
     private func advanceSelection() {
         guard configuration.autoScrollEnabled, !items.isEmpty, !isDragging else { return }
-        guard let current = selection ?? items.first?.id,
-              let index = items.firstIndex(where: { $0.id == current }) else { return }
 
-        let nextIndex: Int
         if configuration.isInfinite {
-            nextIndex = (index + 1) % items.count
-        } else if index + 1 < items.count {
-            nextIndex = index + 1
+            // Infinite layout consumes this token and animates to the next adjacent looped page.
+            autoAdvanceToken &+= 1
         } else {
-            nextIndex = 0
-        }
+            guard let current = selection ?? items.first?.id,
+                  let index = items.firstIndex(where: { $0.id == current }) else { return }
 
-        withAnimation(.smooth(duration: 0.55)) {
-            selection = items[nextIndex].id
+            let nextIndex = index + 1 < items.count ? index + 1 : 0
+            withAnimation(.smooth(duration: 0.55)) {
+                selection = items[nextIndex].id
+            }
         }
 
         #if canImport(UIKit)
@@ -210,6 +211,7 @@ private struct InfiniteCarouselLayout<Item: Identifiable & Hashable, Content: Vi
     let configuration: CarouselConfiguration
     @Binding var selection: Item.ID?
     @Binding var isDragging: Bool
+    var autoAdvanceToken: UInt64
     @ViewBuilder var content: (Item) -> Content
 
     /// Three copies keep the active window away from either edge.
@@ -224,6 +226,10 @@ private struct InfiniteCarouselLayout<Item: Identifiable & Hashable, Content: Vi
 
     @State private var loopSelection: LoopedItem<Item>.ID?
     @State private var isRecentering = false
+    @State private var recenterWorkItem: DispatchWorkItem?
+
+    private let scrollAnimation = Animation.smooth(duration: 0.55)
+    private let recenterDelay: TimeInterval = 0.7
 
     var body: some View {
         GeometryReader { proxy in
@@ -267,39 +273,111 @@ private struct InfiniteCarouselLayout<Item: Identifiable & Hashable, Content: Vi
             .onAppear {
                 recenterIfNeeded(force: true)
             }
+            .onDisappear {
+                recenterWorkItem?.cancel()
+                recenterWorkItem = nil
+            }
+            .onChange(of: autoAdvanceToken) { _, _ in
+                advanceToNextAdjacentPage()
+            }
             .onChange(of: selection) { _, newValue in
-                syncLoopSelection(to: newValue)
+                // External selection changes (page dots / parent) — prefer an adjacent copy so we scroll.
+                syncLoopSelectionToward(newValue)
             }
             .onChange(of: loopSelection) { _, newValue in
                 guard !isRecentering, let newValue else { return }
                 if let match = loopedItems.first(where: { $0.id == newValue }) {
                     if selection != match.item.id {
-                        selection = match.item.id
+                        // Keep logical selection in sync without requesting another scroll.
+                        var transaction = Transaction()
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) {
+                            selection = match.item.id
+                        }
                     }
                 }
-                recenterIfNeeded(force: false)
+                scheduleRecenterAfterScrollSettles()
+            }
+            .onChange(of: isDragging) { _, dragging in
+                if dragging {
+                    recenterWorkItem?.cancel()
+                } else {
+                    scheduleRecenterAfterScrollSettles()
+                }
             }
         }
     }
 
-    private func syncLoopSelection(to itemID: Item.ID?) {
-        guard let itemID else { return }
+    /// Auto-scroll: always move one page forward in the looped buffer so `scrollPosition` animates.
+    private func advanceToNextAdjacentPage() {
+        guard !items.isEmpty, !isDragging else { return }
+
+        let currentIndex: Int = {
+            if let loopSelection,
+               let index = loopedItems.firstIndex(where: { $0.id == loopSelection }) {
+                return index
+            }
+            if let selection,
+               let index = loopedItems.firstIndex(where: { $0.copy == 1 && $0.item.id == selection }) {
+                return index
+            }
+            return loopedItems.firstIndex(where: { $0.copy == 1 }) ?? 0
+        }()
+
+        let nextIndex = min(currentIndex + 1, loopedItems.count - 1)
+        let next = loopedItems[nextIndex]
+
+        withAnimation(scrollAnimation) {
+            loopSelection = next.id
+        }
+    }
+
+    /// When the parent changes logical selection, scroll to the nearest matching looped page.
+    private func syncLoopSelectionToward(_ itemID: Item.ID?) {
+        guard let itemID, !isRecentering else { return }
+
         if let current = loopSelection,
            let match = loopedItems.first(where: { $0.id == current }),
            match.item.id == itemID {
             return
         }
 
-        // Prefer the middle copy so we stay far from either edge.
-        if let middle = loopedItems.first(where: { $0.copy == 1 && $0.item.id == itemID }) {
-            isRecentering = true
-            loopSelection = middle.id
-            DispatchQueue.main.async { isRecentering = false }
+        guard let target = nearestLoopedItem(for: itemID) else { return }
+
+        withAnimation(scrollAnimation) {
+            loopSelection = target.id
         }
     }
 
+    private func nearestLoopedItem(for itemID: Item.ID) -> LoopedItem<Item>? {
+        let matches = loopedItems.filter { $0.item.id == itemID }
+        guard !matches.isEmpty else { return nil }
+
+        guard let loopSelection,
+              let currentIndex = loopedItems.firstIndex(where: { $0.id == loopSelection }) else {
+            return matches.first(where: { $0.copy == 1 }) ?? matches.first
+        }
+
+        return matches.min { lhs, rhs in
+            let left = loopedItems.firstIndex(where: { $0.id == lhs.id }).map { abs($0 - currentIndex) } ?? .max
+            let right = loopedItems.firstIndex(where: { $0.id == rhs.id }).map { abs($0 - currentIndex) } ?? .max
+            return left < right
+        }
+    }
+
+    private func scheduleRecenterAfterScrollSettles() {
+        guard !isDragging else { return }
+        recenterWorkItem?.cancel()
+
+        let work = DispatchWorkItem {
+            recenterIfNeeded(force: false)
+        }
+        recenterWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + recenterDelay, execute: work)
+    }
+
     private func recenterIfNeeded(force: Bool) {
-        guard !items.isEmpty else { return }
+        guard !items.isEmpty, !isDragging else { return }
 
         let preferredCopy = 1
         let current: LoopedItem<Item>? = {
@@ -321,7 +399,7 @@ private struct InfiniteCarouselLayout<Item: Identifiable & Hashable, Content: Vi
 
         if let middle = loopedItems.first(where: { $0.copy == preferredCopy && $0.item.id == current.item.id }) {
             isRecentering = true
-            // Jump without animation so the loop seam stays invisible.
+            // Jump without animation so the loop seam stays invisible — only after scroll has settled.
             var transaction = Transaction()
             transaction.disablesAnimations = true
             withTransaction(transaction) {

@@ -172,12 +172,12 @@ var loopedItems: [LoopedItem<Item>] {
 Wire selection through a *loop* id while exposing the real item id to your UI:
 
 ```swift
-.onChange(of: loopSelection) { _, newValue in
-    guard let match = loopedItems.first(where: { $0.id == newValue }) else { return }
-    selection = match.item.id
-    recenterIfNeeded()
+// Auto-advance: always move one adjacent page forward in the looped buffer.
+withAnimation(.smooth(duration: 0.55)) {
+    loopSelection = loopedItems[currentIndex + 1].id
 }
 
+// After the scroll settles (~0.7s), silently snap back to the middle copy.
 func recenterIfNeeded() {
     guard let current = loopedItems.first(where: { $0.id == loopSelection }),
           current.copy != 1,
@@ -193,7 +193,7 @@ func recenterIfNeeded() {
 }
 ```
 
-Because the jump is animation-free and lands on an identical-looking cell, the seam disappears. Auto-scroll simply walks `selection` to the next logical item; the loop buffer absorbs the wrap.
+Because the recenter jump is animation-free and lands on an identical-looking cell, the seam disappears. **Auto-scroll must advance `loopSelection` to the next adjacent looped page** (with the same `withAnimation` as finite mode) — not remap logical `selection` onto the middle copy, which skips the scroll transition. Defer the silent middle-copy recenter until after the animated scroll settles (both axes).
 
 **When not to use infinite:** short catalogs (2–3 items) where looping feels gimmicky, or content with a meaningful “end” (checkout steps, onboarding).
 
@@ -218,7 +218,7 @@ ScrollView(.vertical) {
 .scrollPosition(id: $loopSelection)
 ```
 
-Recenter after each settled page, just like the horizontal infinite case. Soft haptics on auto-advance help vertical paging feel deliberate without shouting.
+Same adjacent-page auto-advance and deferred recenter as the horizontal infinite case — vertical only swaps the scroll axis. Soft haptics on auto-advance help vertical paging feel deliberate without shouting.
 
 ---
 
