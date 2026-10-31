@@ -10,7 +10,7 @@ struct SampleCardView: View {
     }
 
     var body: some View {
-        let chrome = ZStack(alignment: .bottomLeading) {
+        ZStack(alignment: .bottomLeading) {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(
                     LinearGradient(
@@ -44,25 +44,16 @@ struct SampleCardView: View {
             .padding(style == .featured ? 22 : 18)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .shadow(color: item.gradientColors.last?.opacity(0.35) ?? .black.opacity(0.2), radius: 16, y: 10)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(item.title). \(item.subtitle)")
-
-        switch style {
-        case .featured:
-            // Deterministic height from width — shared with UIKit via CarouselHorizontalMetrics.
-            chrome
-                .aspectRatio(CarouselHorizontalMetrics.cardAspectRatio, contentMode: .fit)
-        case .compact:
-            chrome
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
     }
 }
 
 #Preview {
     SampleCardView(item: SampleData.destinations[0])
-        .frame(width: 320)
+        .frame(height: 240)
         .padding()
 }

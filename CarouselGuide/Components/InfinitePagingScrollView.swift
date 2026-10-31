@@ -92,9 +92,11 @@ struct InfinitePagingScrollView<Item: Identifiable & Hashable, Page: View>: UIVi
 
 // MARK: - Page host wrapper
 
-/// Concrete hosted root with an exact pixel size so `UIHostingController` stays typed as
-/// `PageHost<Page>` (not `some View`). Horizontal uses `CarouselHorizontalMetrics` — the same
-/// width/height finite applies. Vertical passes `size: nil` (lean path for auto-scroll).
+/// Concrete hosted root with an exact size so `UIHostingController` stays typed as
+/// `PageHost<Page>` (not `some View`).
+///
+/// Horizontal: size = available stage page (same as finite `pageSize`) so cards fill the
+/// carousel without growing past the screen. Vertical: `size: nil` (lean auto-scroll path).
 private struct PageHost<Content: View>: View {
     let content: Content
     var size: CGSize?
@@ -213,15 +215,15 @@ final class InfinitePagingController<Item: Identifiable & Hashable, Page: View>:
             let root = PageHost(content: pageBuilder(items[index % items.count]), size: nil)
             let host = UIHostingController(rootView: root)
             host.view.backgroundColor = .clear
-            host.view.clipsToBounds = false // card shadow like finite ScrollView
+            // Clip H pages to the stage frame so hosts can’t paint taller than available space.
+            host.view.clipsToBounds = (axis == .horizontal)
             host.view.translatesAutoresizingMaskIntoConstraints = true
             host.view.autoresizingMask = []
             // Frames are the only size authority — never intrinsic/contentSize (that oversized H).
             if #available(iOS 16.0, *) {
                 host.sizingOptions = []
             }
-            // Horizontal only: safe-area insets on the host inflated height past finite.
-            // Vertical keeps default safe-area behavior so auto-scroll layout stays stable.
+            // Horizontal only: avoid safe-area padding fighting the stage-sized frame.
             if axis == .horizontal, #available(iOS 16.4, *) {
                 host.safeAreaRegions = []
             }
@@ -244,15 +246,14 @@ final class InfinitePagingController<Item: Identifiable & Hashable, Page: View>:
             let main = CGFloat(index) * strideLength
             let item = items[index % items.count]
             if horizontal {
-                // Same pixel size as FiniteCarouselLayout horizontal pages:
-                // width = pageLength, height = aspect card + shared demo padding (NOT stage height).
-                let height = CarouselHorizontalMetrics.pageItemHeight(forPageWidth: pageLength)
-                let size = CGSize(width: pageLength, height: height)
+                // Fill available stage — same numbers as FiniteCarouselLayout.pageSize:
+                // width = bounds − H insets, height = full offered stage height.
+                // Leading inset mirrors finite contentMargins; card padding lives in pageBuilder.
+                let size = CGSize(width: pageLength, height: max(view.bounds.height, 1))
                 host.rootView = PageHost(content: pageBuilder(item), size: size)
-                let y = max((view.bounds.height - height) * 0.5, 0)
                 host.view.frame = CGRect(
                     x: insets.leading + main,
-                    y: y,
+                    y: 0,
                     width: size.width,
                     height: size.height
                 )

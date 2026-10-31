@@ -33,9 +33,9 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
                     description: Text("Provide at least one item to render a carousel.")
                 )
             } else if configuration.isInfinite {
-                // Same GeometryReader shell as FiniteCarouselLayout so the pager is sized to the
-                // stage — not to UIScrollView.contentSize (that made infinite H cards much taller).
-                GeometryReader { _ in
+                // Pin the UIKit pager to the offered stage size (same shell as finite).
+                // Without this, UIScrollView contentSize can inflate the representable past the screen.
+                GeometryReader { geo in
                     InfinitePagingScrollView(
                         items: items,
                         axis: configuration.axis,
@@ -47,6 +47,7 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
                         autoScrollEnabled: configuration.autoScrollEnabled,
                         pageBuilder: content
                     )
+                    .frame(width: geo.size.width, height: geo.size.height)
                 }
             } else {
                 FiniteCarouselLayout(
@@ -147,24 +148,18 @@ private struct FiniteCarouselLayout<Item: Identifiable & Hashable, Content: View
 
                 layout {
                     ForEach(items) { item in
-                        let horizontalHeight = CarouselHorizontalMetrics.pageItemHeight(
-                            forPageWidth: pageSize.width
-                        )
                         content(item)
+                            // Fill the available stage page (geometry-driven pageSize).
+                            .frame(
+                                width: configuration.axis == .horizontal ? pageSize.width : nil,
+                                height: pageSize.height
+                            )
                             .containerRelativeFrame(
                                 configuration.axis == .horizontal ? .horizontal : .vertical,
                                 count: 1,
                                 span: 1,
                                 spacing: configuration.spacing,
                                 alignment: .center
-                            )
-                            // Apply exact size AFTER containerRelativeFrame so H height is the
-                            // shared metrics value (not the stage). Matches infinite UIKit hosts.
-                            .frame(
-                                width: configuration.axis == .horizontal ? pageSize.width : nil,
-                                height: configuration.axis == .horizontal
-                                    ? horizontalHeight
-                                    : pageSize.height
                             )
                             .id(item.id)
                             .accessibilityAddTraits(item.id == selection ? .isSelected : [])

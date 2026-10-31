@@ -344,11 +344,11 @@ Before you ship a carousel:
 | File | Role |
 |------|------|
 | `CarouselView.swift` | Finite SwiftUI layout + wires infinite UIKit pager |
-| `InfinitePagingScrollView.swift` | Infinite H/V pager via animated `contentOffset`. H hosts use finite’s width-only frame + measured aspect height (centered); V lean path unchanged. |
+| `InfinitePagingScrollView.swift` | Infinite H/V pager via animated `contentOffset`. H pages fill the offered stage (same pageSize as finite); V lean path unchanged. |
 | `AutoScrollController.swift` | Timer lifecycle with resume delay |
 | `CarouselConfiguration.swift` | Shared knobs / axis helpers |
 | `CarouselDemoView.swift` | Auto/Manual UX pattern |
-| `SampleCardView.swift` | Featured = 4:3 aspect (shared H pixel height); compact fills vertical pages |
+| `SampleCardView.swift` | Fills the page frame it’s given |
 
 Clone the repo, run the eight demos, then lift `CarouselView` into your project. Start with a finite horizontal shelf; add infinite and auto-scroll only when the product story needs them.
 
