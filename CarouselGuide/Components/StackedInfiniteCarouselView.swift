@@ -11,11 +11,11 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
     // MARK: Sizing
 
     /// Center-to-center gap as a fraction of card height (vertical) / width (horizontal).
-    /// Larger than the original ~0.40 so back cards sit farther apart.
-    static let interCardSpacingRatio: CGFloat = 0.55
+    /// Computed (not stored) — generic types can't have static stored properties.
+    static var interCardSpacingRatio: CGFloat { 0.55 }
 
     /// Scale applied at `|pageOffset| == 1` (used when measuring the stack).
-    private static let neighborScaleAtOne: CGFloat = 1.0 - 0.15
+    private static var neighborScaleAtOne: CGFloat { 1.0 - 0.15 }
 
     /// Container extent the caller should reserve so ±1 neighbors aren’t clipped.
     ///
