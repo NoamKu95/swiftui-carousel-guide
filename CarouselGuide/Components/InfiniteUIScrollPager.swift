@@ -100,6 +100,18 @@ struct InfiniteUIScrollPager<Item: Identifiable & Hashable, Page: View>: UIViewC
     }
 }
 
+// MARK: - Expanding page wrapper
+
+/// Concrete hosted root so we can apply `frame(maxWidth/maxHeight:)` without losing `Page` typing.
+private struct ExpandingPage<Content: View>: View {
+    let content: Content
+
+    var body: some View {
+        content
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+    }
+}
+
 // MARK: - Controller
 
 @MainActor
@@ -115,7 +127,7 @@ final class InfiniteUIScrollController<Item: Identifiable & Hashable, Page: View
     private(set) var items: [Item] = []
 
     private let scrollView = UIScrollView()
-    private var hosts: [UIHostingController<Page>] = []
+    private var hosts: [UIHostingController<ExpandingPage<Page>>] = []
     private var pageLength: CGFloat = 0
     private var verifiedMiddlePin = false
     private var isProgrammaticAnimation = false
@@ -261,8 +273,7 @@ final class InfiniteUIScrollController<Item: Identifiable & Hashable, Page: View
         guard let pageBuilder, !items.isEmpty else { return }
         for index in 0..<loopedCount {
             // Fill the UIKit page frame like finite's containerRelativeFrame proposal.
-            let root = pageBuilder(items[index % items.count])
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            let root = ExpandingPage(content: pageBuilder(items[index % items.count]))
             let host = UIHostingController(rootView: root)
             host.view.backgroundColor = .clear
             host.view.clipsToBounds = false
