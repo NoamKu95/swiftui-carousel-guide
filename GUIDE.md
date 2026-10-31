@@ -6,7 +6,7 @@ SwiftUI finally gives us first-class paging primitives — `scrollTargetBehavior
 2. Regular vertical carousel  
 3. Horizontal infinite (seamless loop)  
 4. Vertical infinite (seamless loop)  
-5. **3-up infinite stack** — center card focused, neighbors peek with scale (card-picker style)
+5. **3-up infinite stack** — cards on a 3D circle; top travels behind and becomes bottom (card-picker style)
 
 The first four share `CarouselView`; the 3-up stack is `StackedInfiniteCarouselView`. All live in the companion demo app.
 
@@ -210,17 +210,20 @@ Same UIKit `setContentOffset(_:animated:)` pager as horizontal infinite — only
 
 ---
 
-## 5. 3-up infinite stack (peek + scale)
+## 5. 3-up infinite stack (3D circle)
 
-Full-page paging is wrong when the product wants **three cards visible** — a focused center with scaled neighbors (card design pickers, cover-flow-ish stacks). Don’t use `ScrollView` paging here: drive a small window of virtual offsets (`-2…+2`) with transforms:
+Full-page paging is wrong when the product wants **three cards visible** — a focused center with neighbors (card design pickers). Don’t use `ScrollView` paging: place every item on a ring and drive a continuous `progress` with the drag.
 
 ```swift
-let pageOffset = CGFloat(virtualOffset) + dragFraction
-let translationY = pageOffset * interCardSpacing   // ~0.55 × cardHeight
-let scale = 1 - min(abs(pageOffset) * 0.15, 0.30)
+let progress = CGFloat(internalIndex) - dragFraction   // live while dragging
+let delta = ringDelta(itemIndex:i, progress:progress)  // shortest signed slots
+let angle = delta * (2 * .pi / CGFloat(itemCount))
+let y = sin(angle) * radius          // radius ≈ spacing / sin(2π/n)
+let depth = cos(angle)               // 1 front … −1 behind
+let scale = 0.70 + 0.30 * ((depth + 1) / 2)
 ```
 
-Cards stay fully opaque (depth via scale + zIndex only). Infinite looping uses a large virtual index (remap after settle so `dragOffset = ±pageExtent` becomes `index ± 1, dragOffset = 0` with no jump). Size with `StackedInfiniteCarouselView.stackExtent(…)` so the container fits the center card plus ±1 neighbors — don’t clip them.
+A slow swipe rotates the wheel in place: the **top card arcs behind the center and becomes the bottom** (and the reverse the other way) — not a linear “slide off / slide on.” Depth via `scale` + `zIndex` + a light `rotation3DEffect`; keep cards opaque. Infinite looping remaps after settle (`dragOffset = ±pageExtent` → `index ± 1, dragOffset = 0`). Size with `StackedInfiniteCarouselView.stackExtent(…)` so rest neighbors aren’t clipped.
 
 ---
 

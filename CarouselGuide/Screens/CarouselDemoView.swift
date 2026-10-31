@@ -106,8 +106,8 @@ struct CarouselDemoView: View {
     private var modeCaption: String {
         if kind.isStackedThreeInfinite {
             return autoScrollEnabled
-                ? "Center card is focused; neighbors peek above and below. Auto-advances the stack."
-                : "Swipe the stack to change the focused card. Neighbors stay visible with scale."
+                ? "Cards ride a 3D circle — the top card travels behind and becomes the bottom. Auto-advances the wheel."
+                : "Drag slowly to watch the 3D circle rotate. The top card moves behind the center and emerges as the bottom."
         }
         if autoScrollEnabled {
             return kind.configuration.isInfinite

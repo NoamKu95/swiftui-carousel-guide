@@ -1,15 +1,15 @@
 import SwiftUI
 
-/// Infinite carousel that keeps **3 cards on screen** at once (center + neighbors),
-/// with scale / depth by page offset (neighbors stay fully opaque).
+/// Infinite **3-up** carousel: cards sit on a vertical (or horizontal) **3D circle**.
 ///
-/// Port of the production `VerticalInfiniteCarouselView` pattern (card-selection style):
-/// stacked transforms instead of a full-page `ScrollView`. Horizontal uses the same
-/// model on the X axis.
+/// At rest you see center + neighbors. On a slow swipe the stack rotates as a
+/// wheel — the top card travels *behind* the center and emerges as the bottom
+/// card (and the reverse for the other direction). Dropping the linear
+/// “slide off / slide on” path is what sells the circle.
 ///
-/// Internally we keep five virtual slots (`-2…+2`) so a card can slide into the ±1
-/// seat during a swipe without popping in. Only slots with `|pageOffset| < 1.5`
-/// are drawn — at rest that is exactly **three** cards.
+/// `progress` is continuous (`internalIndex − dragFraction`), so every frame of
+/// a slow drag remaps angles. After a committed step we remap the virtual index
+/// the same way as before so the loop never ends.
 struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
 
     // MARK: Sizing
@@ -18,16 +18,16 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
     /// Computed (not stored) — generic types can't have static stored properties.
     static var interCardSpacingRatio: CGFloat { 0.55 }
 
-    /// Scale applied at `|pageOffset| == 1` (used when measuring the stack).
-    private static var neighborScaleAtOne: CGFloat { 1.0 - 0.15 }
+    /// Scale applied at a rest neighbor (`|Δ| == 1`) when measuring the stack.
+    private static var neighborScaleAtOne: CGFloat { 0.82 }
 
-    /// Container extent the caller should reserve so ±1 neighbors aren’t clipped.
+    /// Container extent the caller should reserve so rest neighbors aren’t clipped.
     ///
-    /// `2 × spacing + cardMain × neighborScale` (+ small slack for shadow / drag).
+    /// `2 × spacing + cardMain × neighborScale` (+ slack for shadow / mid-orbit).
     static func stackExtent(forCardCrossAxis crossAxis: CGFloat, aspectRatio: CGFloat = 1.586) -> CGFloat {
         let cardMain = crossAxis / aspectRatio
         let spacing = cardMain * interCardSpacingRatio
-        let slack = cardMain * 0.12
+        let slack = cardMain * 0.18
         return 2 * spacing + cardMain * neighborScaleAtOne + slack
     }
 
@@ -78,26 +78,37 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
         return ((virtual % itemCount) + itemCount) % itemCount
     }
 
+    /// Shortest signed distance on the ring from `progress` to item `i`, in slots.
+    private func ringDelta(itemIndex: Int, progress: CGFloat) -> CGFloat {
+        guard itemCount > 0 else { return 0 }
+        let n = CGFloat(itemCount)
+        var delta = CGFloat(itemIndex) - progress
+        // Wrap into (-n/2, n/2]
+        delta = delta.truncatingRemainder(dividingBy: n)
+        if delta > n / 2 { delta -= n }
+        if delta <= -n / 2 { delta += n }
+        return delta
+    }
+
     var body: some View {
         GeometryReader { geo in
-            // Ternaries only — bare if/else assigning locals breaks ViewBuilder.
             let pageExtent = axis == .vertical ? geo.size.height : geo.size.width
             let crossExtent = axis == .vertical ? geo.size.width : geo.size.height
             let cardCross = crossExtent
             let cardMain = axis == .vertical
                 ? crossExtent / cardAspectRatio
                 : crossExtent * cardAspectRatio
-            // Spacing from card size (not pageExtent) so gaps stay stable as the
-            // container grows to fit the stack.
             let interCardSpacing = cardMain * Self.interCardSpacingRatio
+            // Swipe toward negative translation → progress advances (next).
             let dragFraction = pageExtent > 0 ? dragOffset / pageExtent : 0
+            let progress = CGFloat(internalIndex) - dragFraction
 
             stackContent(
                 pageExtent: pageExtent,
                 cardMain: cardMain,
                 cardCross: cardCross,
                 interCardSpacing: interCardSpacing,
-                dragFraction: dragFraction
+                progress: progress
             )
         }
     }
@@ -108,48 +119,60 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
         cardMain: CGFloat,
         cardCross: CGFloat,
         interCardSpacing: CGFloat,
-        dragFraction: CGFloat
+        progress: CGFloat
     ) -> some View {
+        let count = itemCount
+        // Radius chosen so a rest neighbor (|Δ| == 1) lands at ±interCardSpacing.
+        let stepAngle = count > 0 ? (2 * CGFloat.pi / CGFloat(count)) : 0
+        let radius: CGFloat = {
+            let s = sin(stepAngle)
+            return abs(s) > 0.001 ? interCardSpacing / s : interCardSpacing
+        }()
+
         ZStack {
-            // Five virtual seats for swipe continuity; only |offset| < 1.5 are visible
-            // → three cards at rest (−1, 0, +1).
-            ForEach([-2, -1, 0, 1, 2], id: \.self) { virtualOffset in
-                let realIdx = realIndex(for: internalIndex + virtualOffset)
-                let pageOffset = CGFloat(virtualOffset) + dragFraction
-                let absOffset = abs(pageOffset)
-                let isVisible = absOffset < 1.5
-                let translation = pageOffset * interCardSpacing
-                // Center stays at full size; only neighbors shrink.
-                let scale = absOffset < 0.05 ? 1.0 : 1.0 - min(absOffset * 0.15, 0.30)
+            ForEach(Array(items.enumerated()), id: \.element.id) { itemIndex, item in
+                let delta = ringDelta(itemIndex: itemIndex, progress: progress)
+                // Only keep cards within ~1½ seats — for a 3-item ring that’s everyone.
+                let isVisible = abs(delta) < 1.55
 
                 if isVisible {
-                    let isCenter = absOffset < 0.05
-                    cardBuilder(items[realIdx])
+                    let angle = delta * stepAngle
+                    let depth = cos(angle) // 1 = front, −1 = behind center
+                    let orbit = sin(angle) * radius
+                    // Front = 1.0; back of the circle tucks smaller so it reads as behind.
+                    let scale = 0.70 + 0.30 * ((depth + 1) * 0.5)
+                    let isFront = depth > 0.85
+                    let tilt = angle * 0.42 // radians → partial 3D pitch/yaw
+
+                    cardBuilder(item)
                         .frame(
                             width: axis == .vertical ? cardCross : cardMain,
                             height: axis == .vertical ? cardMain : cardCross
                         )
-                        // Flatten + draw opaque so the focused card fully covers neighbors.
                         .compositingGroup()
-                        .opacity(1)
-                        // Dark shadow (not .primary) so it stays visible on light cards in dark mode.
                         .shadow(
-                            color: .black.opacity(isCenter ? 0.35 : 0.14),
-                            radius: isCenter ? 18 : 6,
-                            y: isCenter ? 10 : 3
+                            color: .black.opacity(isFront ? 0.35 : max(0.08, 0.22 * Double((depth + 1) * 0.5))),
+                            radius: isFront ? 18 : 8,
+                            y: isFront ? 10 : 4
                         )
                         .scaleEffect(scale)
-                        .offset(
-                            x: axis == .horizontal ? translation : 0,
-                            y: axis == .vertical ? translation : 0
+                        .rotation3DEffect(
+                            .radians(Double(tilt)),
+                            axis: axis == .vertical
+                                ? (x: 1, y: 0, z: 0)
+                                : (x: 0, y: 1, z: 0),
+                            perspective: 0.55
                         )
-                        .zIndex(1.0 - Double(absOffset))
-                        .allowsHitTesting(virtualOffset == 0 && !isSettling)
+                        .offset(
+                            x: axis == .horizontal ? orbit : 0,
+                            y: axis == .vertical ? orbit : 0
+                        )
+                        .zIndex(Double(depth))
+                        .allowsHitTesting(isFront && !isSettling)
                 }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        // Don’t clip — container height is sized to fit ±1 neighbors.
         .contentShape(Rectangle())
         .gesture(dragGesture(pageExtent: pageExtent))
         .onAppear { lastAutoTick = autoAdvanceTick }
@@ -172,12 +195,14 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
     // MARK: - Drag
 
     private func dragGesture(pageExtent: CGFloat) -> some Gesture {
-        DragGesture(minimumDistance: 10)
+        DragGesture(minimumDistance: 8)
             .onChanged { value in
                 guard !isSettling else { return }
                 if dragOffset == 0 {
                     onUserDrag?()
                 }
+                // Live offset — no threshold while dragging, so a slow swipe
+                // continuously rotates the circle.
                 dragOffset = axis == .vertical
                     ? value.translation.height
                     : value.translation.width
@@ -190,7 +215,7 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
                 let predicted = axis == .vertical
                     ? value.predictedEndTranslation.height
                     : value.predictedEndTranslation.width
-                let threshold = pageExtent / 3
+                let threshold = pageExtent / 4
 
                 let decisive = abs(predicted) > abs(translation) ? predicted : translation
 
@@ -199,24 +224,24 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
                 } else if decisive < -threshold {
                     commitStep(direction: +1, pageExtent: pageExtent)
                 } else {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
                         dragOffset = 0
                     }
                 }
             }
     }
 
-    /// `direction` +1 = next, −1 = previous. Animates one slot then remaps the virtual index.
+    /// `direction` +1 = next, −1 = previous. Animates one slot on the circle, then remaps.
     private func commitStep(direction: Int, pageExtent: CGFloat) {
         guard itemCount > 0, !isSettling else { return }
         isSettling = true
         let targetOffset = CGFloat(-direction) * pageExtent
 
-        withAnimation(.spring(response: 0.40, dampingFraction: 0.85)) {
+        withAnimation(.spring(response: 0.48, dampingFraction: 0.88)) {
             dragOffset = targetOffset
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.50) {
             internalIndex += direction
             dragOffset = 0
             currentIndex = realIndex(for: internalIndex)
