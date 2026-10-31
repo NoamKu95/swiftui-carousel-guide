@@ -32,9 +32,9 @@ enum DemoKind: String, CaseIterable, Identifiable, Hashable {
         case .verticalInfinite:
             "Endless vertical paging without a hard edge"
         case .stackedThreeInfinite:
-            "Five designs on a vertical 3D circle — three visible, top arcs behind to bottom"
+            "Three cards on a vertical 3D circle — top arcs behind to become bottom"
         case .stackedThreeInfiniteHorizontal:
-            "Five designs on a horizontal 3D circle — wide cards, left arcs behind to right"
+            "Three cards on a horizontal 3D circle — wide cards, left arcs behind to right"
         }
     }
 

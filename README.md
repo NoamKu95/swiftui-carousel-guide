@@ -24,8 +24,8 @@ The root menu lists six carousel kinds. Each demo page has an **Auto / Manual** 
 | Vertical Carousel | Vertical | Finite | Playlists |
 | Infinite Horizontal | Horizontal | Seamless loop | Travel destinations |
 | Infinite Vertical | Vertical | Seamless loop | Playlists |
-| 3-Up Stack (Vertical) | Vertical circle | Infinite · 5 items | Card designs |
-| 3-Up Stack (Horizontal) | Horizontal circle | Infinite · 5 items | Card designs |
+| 3-Up Stack (Vertical) | Vertical circle | Infinite · 3 items | Card designs |
+| 3-Up Stack (Horizontal) | Horizontal circle | Infinite · 3 items | Card designs |
 
 On **Auto**, the carousel advances on an adjustable interval, pauses while you drag, then resumes. On **Manual**, nothing auto-advances.
 

@@ -243,8 +243,8 @@ struct CarouselDemoView: View {
             Label(
                 kind.isStackedThreeInfinite
                     ? (kind.configuration.axis == .horizontal
-                        ? "5-item stack · horizontal"
-                        : "5-item stack · vertical")
+                        ? "3-up infinite stack · H"
+                        : "3-up infinite stack · V")
                     : (kind.configuration.isInfinite ? "Infinite loop" : "Finite range"),
                 systemImage: kind.isStackedThreeInfinite
                     ? (kind.configuration.axis == .horizontal
