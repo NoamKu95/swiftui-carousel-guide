@@ -161,30 +161,21 @@ struct CarouselDemoView: View {
     }
 
     /// Vertical stack: carousel + trailing indicator, height from width.
-    /// Horizontal stack: carousel + bottom indicator, width fitted to the stage.
+    /// Horizontal stack: wide focused card + bottom indicator (no overlap).
     private var stackedStage: some View {
         let axis = kind.configuration.axis
         return GeometryReader { geo in
             let aspect: CGFloat = 1.586
-            let indicatorThickness: CGFloat = 4
-            let spacing: CGFloat = 16
+            let spacing: CGFloat = 20
 
             if axis == .horizontal {
-                let availableHeight = max(geo.size.height - indicatorThickness - spacing, 100)
-                // Shrink card height so the full 3-up wheel fits in the stage width.
-                let heightFittingWidth = StackedInfiniteCarouselView<CarouselItem, EmptyView>
-                    .cardCrossAxis(
-                        fittingStackExtent: geo.size.width,
-                        aspectRatio: aspect,
-                        axis: .horizontal
-                    )
-                let cardHeight = min(availableHeight, heightFittingWidth)
-                let stackWidth = StackedInfiniteCarouselView<CarouselItem, EmptyView>
-                    .stackExtent(
-                        forCardCrossAxis: cardHeight,
-                        aspectRatio: aspect,
-                        axis: .horizontal
-                    )
+                // Reserve real space for dots + shadow so the wheel can’t cover them.
+                let indicatorRow: CGFloat = 28
+                let shadowPad: CGFloat = 18
+                let availableHeight = max(geo.size.height - indicatorRow - spacing - shadowPad, 160)
+                // Wide horizontal card (~88% of stage width), capped by available height.
+                let targetCardWidth = geo.size.width * 0.88
+                let cardHeight = min(availableHeight, targetCardWidth / aspect)
 
                 VStack(spacing: spacing) {
                     StackedInfiniteCarouselView(
@@ -198,17 +189,20 @@ struct CarouselDemoView: View {
                     ) { item in
                         SampleCardView(item: item, style: .featured)
                     }
-                    .frame(width: stackWidth, height: cardHeight)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: cardHeight)
+                    .padding(.bottom, shadowPad)
 
                     PageIndicatorView(
                         count: kind.items.count,
                         currentIndex: stackedIndex,
                         axis: .horizontal
                     )
-                    .frame(height: indicatorThickness)
+                    .frame(height: indicatorRow)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             } else {
+                let indicatorThickness: CGFloat = 8
                 let carouselWidth = max(geo.size.width - indicatorThickness - spacing, 120)
                 let stackHeight = StackedInfiniteCarouselView<CarouselItem, EmptyView>
                     .stackExtent(
@@ -241,7 +235,7 @@ struct CarouselDemoView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             }
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, axis == .horizontal ? 12 : 20)
     }
 
     private var footer: some View {
@@ -249,8 +243,8 @@ struct CarouselDemoView: View {
             Label(
                 kind.isStackedThreeInfinite
                     ? (kind.configuration.axis == .horizontal
-                        ? "3-up infinite stack · H"
-                        : "3-up infinite stack · V")
+                        ? "5-item stack · horizontal"
+                        : "5-item stack · vertical")
                     : (kind.configuration.isInfinite ? "Infinite loop" : "Finite range"),
                 systemImage: kind.isStackedThreeInfinite
                     ? (kind.configuration.axis == .horizontal

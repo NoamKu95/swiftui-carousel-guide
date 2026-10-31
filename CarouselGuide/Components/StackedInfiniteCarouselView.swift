@@ -15,12 +15,17 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
 
     // MARK: Sizing
 
-    /// Center-to-center gap as a fraction of card height (vertical) / width (horizontal).
-    /// Computed (not stored) — generic types can't have static stored properties.
-    static var interCardSpacingRatio: CGFloat { 0.55 }
+    /// Default center-to-center gap as a fraction of card main-axis size.
+    static var interCardSpacingRatioVertical: CGFloat { 0.55 }
+    /// Tighter gap for horizontal so the focused card can stay wide on screen.
+    static var interCardSpacingRatioHorizontal: CGFloat { 0.30 }
 
     /// Scale applied at a rest neighbor (`|Δ| == 1`) when measuring the stack.
     private static var neighborScaleAtOne: CGFloat { 0.82 }
+
+    static func defaultSpacingRatio(for axis: CarouselAxis) -> CGFloat {
+        axis == .horizontal ? interCardSpacingRatioHorizontal : interCardSpacingRatioVertical
+    }
 
     /// Card size along the scroll axis (height when vertical, width when horizontal).
     static func cardMainLength(forCardCrossAxis crossAxis: CGFloat,
@@ -35,9 +40,11 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
     /// Pass the card’s *cross* size (width for vertical, height for horizontal).
     static func stackExtent(forCardCrossAxis crossAxis: CGFloat,
                             aspectRatio: CGFloat = 1.586,
-                            axis: CarouselAxis = .vertical) -> CGFloat {
+                            axis: CarouselAxis = .vertical,
+                            spacingRatio: CGFloat? = nil) -> CGFloat {
+        let ratio = spacingRatio ?? defaultSpacingRatio(for: axis)
         let cardMain = cardMainLength(forCardCrossAxis: crossAxis, aspectRatio: aspectRatio, axis: axis)
-        let spacing = cardMain * interCardSpacingRatio
+        let spacing = cardMain * ratio
         let slack = cardMain * 0.18
         return 2 * spacing + cardMain * neighborScaleAtOne + slack
     }
@@ -45,9 +52,11 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
     /// Inverse of `stackExtent` — card cross size that makes the stack fit in `extent`.
     static func cardCrossAxis(fittingStackExtent extent: CGFloat,
                               aspectRatio: CGFloat = 1.586,
-                              axis: CarouselAxis = .vertical) -> CGFloat {
+                              axis: CarouselAxis = .vertical,
+                              spacingRatio: CGFloat? = nil) -> CGFloat {
+        let ratio = spacingRatio ?? defaultSpacingRatio(for: axis)
         let mainPerCross = axis == .vertical ? (1 / aspectRatio) : aspectRatio
-        let multiplier = 2 * interCardSpacingRatio + neighborScaleAtOne + 0.18
+        let multiplier = 2 * ratio + neighborScaleAtOne + 0.18
         return extent / (mainPerCross * multiplier)
     }
 
@@ -58,6 +67,8 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
     var axis: CarouselAxis = .vertical
     /// Width ÷ height of one card (ISO credit-card default 1.586).
     var cardAspectRatio: CGFloat = 1.586
+    /// Override center-to-center gap ratio; `nil` uses the axis default.
+    var spacingRatio: CGFloat? = nil
     /// Auto-advance ticks from `AutoScrollController` (0 = ignore).
     var autoAdvanceTick: UInt64 = 0
     var autoScrollEnabled: Bool = false
@@ -71,11 +82,16 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
 
     private var itemCount: Int { items.count }
 
+    private var resolvedSpacingRatio: CGFloat {
+        spacingRatio ?? Self.defaultSpacingRatio(for: axis)
+    }
+
     init(
         items: [Item],
         currentIndex: Binding<Int>,
         axis: CarouselAxis = .vertical,
         cardAspectRatio: CGFloat = 1.586,
+        spacingRatio: CGFloat? = nil,
         autoAdvanceTick: UInt64 = 0,
         autoScrollEnabled: Bool = false,
         onUserDrag: (() -> Void)? = nil,
@@ -85,6 +101,7 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
         self._currentIndex = currentIndex
         self.axis = axis
         self.cardAspectRatio = cardAspectRatio
+        self.spacingRatio = spacingRatio
         self.autoAdvanceTick = autoAdvanceTick
         self.autoScrollEnabled = autoScrollEnabled
         self.onUserDrag = onUserDrag
@@ -115,18 +132,24 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
             let pageExtent = axis == .vertical ? geo.size.height : geo.size.width
             let crossExtent = axis == .vertical ? geo.size.width : geo.size.height
             let cardCross = crossExtent
+            // Horizontal: size the focused card from the *width* so it reads as a
+            // wide carousel card; vertical still drives height from width.
             let cardMain = axis == .vertical
                 ? crossExtent / cardAspectRatio
-                : crossExtent * cardAspectRatio
-            let interCardSpacing = cardMain * Self.interCardSpacingRatio
-            // Swipe toward negative translation → progress advances (next).
-            let dragFraction = pageExtent > 0 ? dragOffset / pageExtent : 0
+                : min(crossExtent * cardAspectRatio, pageExtent * 0.88)
+            let cardCrossResolved = axis == .vertical
+                ? cardCross
+                : cardMain / cardAspectRatio
+            let interCardSpacing = cardMain * resolvedSpacingRatio
+            // One slot ≈ card main length so a swipe feels tied to the big card.
+            let slotExtent = max(cardMain, 1)
+            let dragFraction = dragOffset / slotExtent
             let progress = CGFloat(internalIndex) - dragFraction
 
             stackContent(
-                pageExtent: pageExtent,
+                pageExtent: slotExtent,
                 cardMain: cardMain,
-                cardCross: cardCross,
+                cardCross: cardCrossResolved,
                 interCardSpacing: interCardSpacing,
                 progress: progress
             )
@@ -152,8 +175,10 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
         ZStack {
             ForEach(Array(items.enumerated()), id: \.element.id) { itemIndex, item in
                 let delta = ringDelta(itemIndex: itemIndex, progress: progress)
-                // Only keep cards within ~1½ seats — for a 3-item ring that’s everyone.
-                let isVisible = abs(delta) < 1.55
+                // Rest shows ±1; during a step also keep ±2 so a 5-item ring can
+                // arc behind the center without popping.
+                let visibleWindow = min(2.55, CGFloat(max(count, 1)) / 2 + 0.05)
+                let isVisible = abs(delta) < visibleWindow
 
                 if isVisible {
                     let angle = delta * stepAngle
