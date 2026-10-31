@@ -211,6 +211,8 @@ ScrollView(.vertical) {
 
 Same verified UIKit middle-pin pager as horizontal infinite — only the scroll axis changes. Soft haptics on auto-advance help vertical paging feel deliberate without shouting.
 
+**Sizing caveat:** infinite horizontal pages clear hosting safe-area and expand the SwiftUI root to the UIKit page frame so cards match finite. Applying that same expand/safe-area path on vertical destabilized the verified middle pin (layout re-entry cleared `contentOffset` proof before the timer armed). Vertical infinite therefore keeps the simpler host sizing while sharing the same pin + `+1` advance machinery.
+
 ---
 
 ## Auto-scroll that respects the user
@@ -348,7 +350,7 @@ Before you ship a carousel:
 | File | Role |
 |------|------|
 | `CarouselView.swift` | Finite SwiftUI pager + wires infinite UIKit pager |
-| `InfiniteUIScrollPager.swift` | Verified middle `contentOffset` pin + animated +1 advances |
+| `InfiniteUIScrollPager.swift` | Verified middle `contentOffset` pin + animated +1 advances. Horizontal hosts expand-to-fill (finite size parity); vertical keeps the leaner host path so the middle pin stays stable. |
 | `AutoScrollController.swift` | Timer lifecycle with resume delay |
 | `CarouselConfiguration.swift` | Shared knobs / axis helpers |
 | `CarouselDemoView.swift` | Auto/Manual UX pattern |

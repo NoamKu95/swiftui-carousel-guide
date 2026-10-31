@@ -103,12 +103,19 @@ struct InfiniteUIScrollPager<Item: Identifiable & Hashable, Page: View>: UIViewC
 // MARK: - Expanding page wrapper
 
 /// Concrete hosted root so we can apply `frame(maxWidth/maxHeight:)` without losing `Page` typing.
+/// Horizontal needs the expand-to-fill; vertical keeps the same wrapper for a stable host type
+/// but relies on the UIKit page frame for sizing (matching the working test-branch path).
 private struct ExpandingPage<Content: View>: View {
     let content: Content
+    var expandsToFill: Bool = true
 
     var body: some View {
-        content
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        if expandsToFill {
+            content
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        } else {
+            content
+        }
     }
 }
 
@@ -131,6 +138,8 @@ final class InfiniteUIScrollController<Item: Identifiable & Hashable, Page: View
     private var pageLength: CGFloat = 0
     private var verifiedMiddlePin = false
     private var isProgrammaticAnimation = false
+    /// Prevents ExpandingPage/host layout from re-entering pin while we measure contentOffset.
+    private var isPerformingPin = false
 
     private var loopedCount: Int { items.count * 3 }
     private var middleStart: Int { items.count }
@@ -159,6 +168,10 @@ final class InfiniteUIScrollController<Item: Identifiable & Hashable, Page: View
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        // Hosting-controller layout while pinning can re-enter here; skip so we don't
+        // clear a just-verified middle offset (broke infinite vertical auto-scroll).
+        guard !isPerformingPin else { return }
+
         let length: CGFloat = axis == .horizontal
             ? max(view.bounds.width - insets.leading - insets.trailing, 1)
             : max(view.bounds.height - insets.top - insets.bottom, 1)
@@ -189,6 +202,7 @@ final class InfiniteUIScrollController<Item: Identifiable & Hashable, Page: View
 
     /// Hard pin: set offset without animation, layout, measure, only then mark ready.
     func forcePinToMiddle(animated: Bool) {
+        guard !isPerformingPin else { return }
         verifiedMiddlePin = false
         performVerifiedMiddlePin(animated: animated)
     }
@@ -224,7 +238,11 @@ final class InfiniteUIScrollController<Item: Identifiable & Hashable, Page: View
     // MARK: Pin / layout
 
     private func performVerifiedMiddlePin(preferredLogical: Item.ID? = nil, animated: Bool = false) {
+        guard !isPerformingPin else { return }
         guard !items.isEmpty, pageLength > 0, hosts.count == loopedCount else { return }
+
+        isPerformingPin = true
+        defer { isPerformingPin = false }
 
         scrollView.layoutIfNeeded()
 
@@ -248,17 +266,8 @@ final class InfiniteUIScrollController<Item: Identifiable & Hashable, Page: View
             // Retry once more on the next run loop after layout settles.
             verifiedMiddlePin = false
             DispatchQueue.main.async { [weak self] in
-                guard let self, !self.verifiedMiddlePin else { return }
-                self.setOffset(toPage: offsetIndex, animated: false)
-                self.scrollView.layoutIfNeeded()
-                let retry = self.axis == .horizontal
-                    ? self.scrollView.contentOffset.x
-                    : self.scrollView.contentOffset.y
-                if abs(retry - expectedMain) <= 1.0 {
-                    self.verifiedMiddlePin = true
-                    self.emitSelection(forPage: offsetIndex)
-                    self.onReady?()
-                }
+                guard let self, !self.verifiedMiddlePin, !self.isPerformingPin else { return }
+                self.performVerifiedMiddlePin(preferredLogical: logical, animated: false)
             }
         }
     }
@@ -271,14 +280,25 @@ final class InfiniteUIScrollController<Item: Identifiable & Hashable, Page: View
         }
         hosts.removeAll()
         guard let pageBuilder, !items.isEmpty else { return }
+
+        // Horizontal: expand-to-fill + clear safe area (finite parity sizing).
+        // Vertical: same host type, but no expand/safeArea tweaks — those post-merge
+        // changes destabilized the verified middle pin / first auto-advance on V.
+        let horizontal = axis == .horizontal
+
         for index in 0..<loopedCount {
-            // Fill the UIKit page frame like finite's containerRelativeFrame proposal.
-            let root = ExpandingPage(content: pageBuilder(items[index % items.count]))
+            let root = ExpandingPage(
+                content: pageBuilder(items[index % items.count]),
+                expandsToFill: horizontal
+            )
             let host = UIHostingController(rootView: root)
             host.view.backgroundColor = .clear
             host.view.clipsToBounds = false
-            // Avoid safe-area shrinking the card vs finite SwiftUI layout.
-            if #available(iOS 16.4, *) {
+            // Keep frames authoritative; don't let intrinsic SwiftUI size fight UIScrollView.
+            if #available(iOS 16.0, *) {
+                host.sizingOptions = []
+            }
+            if horizontal, #available(iOS 16.4, *) {
                 host.safeAreaRegions = []
             }
             addChild(host)
@@ -294,39 +314,25 @@ final class InfiniteUIScrollController<Item: Identifiable & Hashable, Page: View
         scrollView.alwaysBounceHorizontal = horizontal
         scrollView.alwaysBounceVertical = !horizontal
 
-        // Match FiniteCarouselLayout.pageSize:
-        // - horizontal: width = bounds - leading/trailing, height = full bounds height
-        // - vertical:   height = bounds - top/bottom, width = full bounds width
-        let pageWidth: CGFloat
-        let pageHeight: CGFloat
-        if horizontal {
-            pageWidth = pageLength
-            pageHeight = max(view.bounds.height, 1)
-        } else {
-            pageWidth = max(view.bounds.width, 1)
-            pageHeight = pageLength
-        }
-
+        // Horizontal: full viewport height, width = bounds − leading/trailing (finite parity).
+        // Vertical: restore working test-branch frames (inset x/width + pageLength height).
         for (index, host) in hosts.enumerated() {
             let main = CGFloat(index) * strideLength
             if horizontal {
-                // Leading inset mirrors finite contentMargins; page fills remaining width.
                 host.view.frame = CGRect(
                     x: insets.leading + main,
                     y: 0,
-                    width: pageWidth,
-                    height: pageHeight
+                    width: pageLength,
+                    height: max(view.bounds.height, 1)
                 )
             } else {
                 host.view.frame = CGRect(
-                    x: 0,
+                    x: insets.leading,
                     y: insets.top + main,
-                    width: pageWidth,
-                    height: pageHeight
+                    width: max(view.bounds.width - insets.leading - insets.trailing, 1),
+                    height: pageLength
                 )
             }
-            host.view.setNeedsLayout()
-            host.view.layoutIfNeeded()
         }
 
         let contentSpan = (horizontal ? insets.leading + insets.trailing : insets.top + insets.bottom)
