@@ -2,6 +2,7 @@
 
 Companion iOS demo for the Medium article on building polished SwiftUI carousels — finite and infinite, horizontal and vertical, with auto-scroll and manual control.
 
+**Repo:** https://github.com/NoamKu95/swiftui-carousel-guide  
 **Requires:** Xcode 15+, iOS 17 SDK, a Mac.
 
 ## Open & run
@@ -65,7 +66,7 @@ CarouselView(
 
 ## Guide concepts
 
-This repo implements the patterns in [`GUIDE.md`](./GUIDE.md) (also published under the Medium Articles project as `docs/swiftui-carousels-guide.md`):
+This repo implements the patterns in [`GUIDE.md`](./GUIDE.md) (Medium Articles project path: `docs/swiftui-carousels-guide.md`):
 
 - Snapping with `scrollTargetBehavior(.viewAligned)` and `scrollPosition(id:)`
 - Infinite looping via a triple-buffered item list + silent recenter

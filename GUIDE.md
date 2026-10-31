@@ -9,7 +9,7 @@ SwiftUI finally gives us first-class paging primitives — `scrollTargetBehavior
 
 All eight combinations live in the companion demo app. The snippets below match that shared `CarouselView` API so you can copy patterns, not one-off screens.
 
-> **Companion app:** open `CarouselGuide.xcodeproj` (iOS 17+) from the companion GitHub repo and explore each demo from the root menu. Every page has an Auto / Manual control.
+> **Companion app:** https://github.com/NoamKu95/swiftui-carousel-guide — open `CarouselGuide.xcodeproj` (iOS 17+) and explore each demo from the root menu. Every page has an Auto / Manual control.
 
 ---
 
