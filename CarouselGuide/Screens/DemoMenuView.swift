@@ -48,13 +48,14 @@ struct DemoMenuView: View {
     private var menuBackground: some View {
         LinearGradient(
             colors: [
-                Color(hex: 0xF7F4EF),
-                Color(hex: 0xE8EEF2),
-                Color(hex: 0xF3EDE4)
+                Color.primary.opacity(0.06),
+                Color.secondary.opacity(0.10),
+                Color.primary.opacity(0.04)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
+        .background(Color(.systemBackground))
         .ignoresSafeArea()
     }
 }
@@ -71,7 +72,7 @@ private struct DemoRow: View {
 
                 Image(systemName: kind.systemImage)
                     .font(.title3.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color(.systemBackground))
             }
 
             VStack(alignment: .leading, spacing: 4) {
@@ -90,28 +91,45 @@ private struct DemoRow: View {
 
             Image(systemName: "chevron.right")
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(.secondary.opacity(0.55))
         }
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(.background.opacity(0.92))
-                .shadow(color: .black.opacity(0.06), radius: 12, y: 6)
+                .fill(Color(.secondarySystemBackground))
+                .shadow(color: .primary.opacity(0.08), radius: 12, y: 6)
         )
         .accessibilityElement(children: .combine)
         .accessibilityHint("Opens the \(kind.title) demo")
     }
 
     private var rowAccent: LinearGradient {
+        // Distinct primary/secondary mixes per row — adaptive in light and dark.
         switch kind {
         case .horizontal:
-            LinearGradient(colors: [Color(hex: 0x1F4E5F), Color(hex: 0x79A8A9)], startPoint: .topLeading, endPoint: .bottomTrailing)
+            LinearGradient(
+                colors: [.primary, .secondary],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
         case .vertical:
-            LinearGradient(colors: [Color(hex: 0x14213D), Color(hex: 0x4361EE)], startPoint: .topLeading, endPoint: .bottomTrailing)
+            LinearGradient(
+                colors: [.secondary, .primary.opacity(0.75)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
         case .horizontalInfinite:
-            LinearGradient(colors: [Color(hex: 0xC46B3A), Color(hex: 0xF2C14E)], startPoint: .topLeading, endPoint: .bottomTrailing)
+            LinearGradient(
+                colors: [.primary.opacity(0.85), .secondary.opacity(0.65)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
         case .verticalInfinite:
-            LinearGradient(colors: [Color(hex: 0x3A0CA3), Color(hex: 0xF72585)], startPoint: .topLeading, endPoint: .bottomTrailing)
+            LinearGradient(
+                colors: [.secondary.opacity(0.9), .primary],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
         }
     }
 }

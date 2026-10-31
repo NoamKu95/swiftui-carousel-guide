@@ -58,13 +58,14 @@ struct CarouselDemoView: View {
                     HStack {
                         Text("Interval")
                             .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.primary)
                         Spacer()
                         Text("\(interval, format: .number.precision(.fractionLength(1)))s")
                             .font(.subheadline.monospacedDigit())
                             .foregroundStyle(.secondary)
                     }
                     Slider(value: $interval, in: 1.5...5.0, step: 0.5)
-                        .tint(Color(hex: 0x1F4E5F))
+                        .tint(.primary)
                         .accessibilityLabel("Auto-scroll interval")
                 }
                 .transition(.opacity.combined(with: .move(edge: .top)))
@@ -117,28 +118,35 @@ struct CarouselDemoView: View {
 
     private var footer: some View {
         HStack(spacing: 12) {
-            Label(kind.configuration.isInfinite ? "Infinite loop" : "Finite range", systemImage: kind.configuration.isInfinite ? "infinity" : "arrow.left.arrow.right")
+            Label(
+                kind.configuration.isInfinite ? "Infinite loop" : "Finite range",
+                systemImage: kind.configuration.isInfinite ? "infinity" : "arrow.left.arrow.right"
+            )
+            .foregroundStyle(.secondary)
+
             Spacer()
+
             Text("\(currentIndex + 1) / \(kind.items.count)")
                 .font(.subheadline.monospacedDigit().weight(.semibold))
+                .foregroundStyle(.primary)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .background(Capsule().fill(.ultraThinMaterial))
+                .background(Capsule().fill(Color(.secondarySystemBackground)))
                 .accessibilityLabel("Item \(currentIndex + 1) of \(kind.items.count)")
         }
         .font(.subheadline)
-        .foregroundStyle(.secondary)
     }
 
     private var demoBackground: some View {
         LinearGradient(
             colors: [
-                Color(hex: 0xF8F6F2),
-                Color(hex: 0xEDF1F5)
+                Color.primary.opacity(0.05),
+                Color.secondary.opacity(0.08)
             ],
             startPoint: .top,
             endPoint: .bottom
         )
+        .background(Color(.systemBackground))
         .ignoresSafeArea()
     }
 }

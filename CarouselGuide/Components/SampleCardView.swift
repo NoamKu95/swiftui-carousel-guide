@@ -9,6 +9,9 @@ struct SampleCardView: View {
         case compact
     }
 
+    /// Contrasting fill for glyphs/text on primary/secondary card surfaces.
+    private var onFill: Color { Color(.systemBackground) }
+
     var body: some View {
         ZStack(alignment: .bottomLeading) {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -22,7 +25,7 @@ struct SampleCardView: View {
 
             Image(systemName: item.symbolName)
                 .font(.system(size: style == .featured ? 92 : 64, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.18))
+                .foregroundStyle(onFill.opacity(0.22))
                 .rotationEffect(.degrees(-8))
                 .padding(style == .featured ? 24 : 18)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
@@ -31,13 +34,13 @@ struct SampleCardView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(item.title)
                     .font(.title2.weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(onFill)
                     .lineLimit(2)
                     .minimumScaleFactor(0.85)
 
                 Text(item.subtitle)
                     .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.88))
+                    .foregroundStyle(onFill.opacity(0.88))
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -46,7 +49,7 @@ struct SampleCardView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .shadow(color: item.gradientColors.last?.opacity(0.35) ?? .black.opacity(0.2), radius: 16, y: 10)
+        .shadow(color: .primary.opacity(0.18), radius: 16, y: 10)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(item.title). \(item.subtitle)")
     }
