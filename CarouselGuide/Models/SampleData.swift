@@ -85,27 +85,28 @@ enum SampleData {
     ]
 
     /// Card-design picks for the 3-up stacked infinite demo (exactly 3 items).
+    /// Gradients stay fully opaque so the focused card never reveals cards behind it.
     static let cardDesigns: [CarouselItem] = [
         CarouselItem(
             id: "card-onyx",
             title: "Onyx",
             subtitle: "Matte black with subtle grain",
             symbolName: "creditcard.fill",
-            gradientColors: [.primary, .secondary.opacity(0.75)]
+            gradientColors: [.primary, .secondary]
         ),
         CarouselItem(
             id: "card-sand",
             title: "Sand",
             subtitle: "Warm neutral for everyday spend",
             symbolName: "creditcard.fill",
-            gradientColors: [.secondary, .primary.opacity(0.7)]
+            gradientColors: [.secondary, .primary]
         ),
         CarouselItem(
             id: "card-slate",
             title: "Slate",
             subtitle: "Cool tone with sharp contrast",
             symbolName: "creditcard.fill",
-            gradientColors: [.primary.opacity(0.85), .secondary]
+            gradientColors: [.primary, .primary, .secondary]
         )
     ]
 }

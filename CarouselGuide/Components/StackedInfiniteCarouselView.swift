@@ -121,10 +121,6 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
                 let translation = pageOffset * interCardSpacing
                 // Center stays at full size; only neighbors shrink.
                 let scale = absOffset < 0.05 ? 1.0 : 1.0 - min(absOffset * 0.15, 0.30)
-                // Center is always fully opaque; only back cards dim for depth.
-                let opacity: Double = absOffset < 0.05
-                    ? 1.0
-                    : max(0.55, 1.0 - Double(absOffset) * 0.28)
 
                 if isVisible {
                     cardBuilder(items[realIdx])
@@ -132,8 +128,9 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
                             width: axis == .vertical ? cardCross : cardMain,
                             height: axis == .vertical ? cardMain : cardCross
                         )
+                        // Flatten + draw opaque so the focused card fully covers neighbors.
                         .compositingGroup()
-                        .opacity(opacity)
+                        .opacity(1)
                         .scaleEffect(scale)
                         .offset(
                             x: axis == .horizontal ? translation : 0,

@@ -14,6 +14,10 @@ struct SampleCardView: View {
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
+            // Opaque base so stacked neighbors never show through translucent gradient stops.
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color.primary)
+
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(
                     LinearGradient(
