@@ -142,7 +142,6 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
                     // Front = 1.0; back of the circle tucks smaller so it reads as behind.
                     let scale = 0.70 + 0.30 * ((depth + 1) * 0.5)
                     let isFront = depth > 0.85
-                    let tilt = angle * 0.42 // radians → partial 3D pitch/yaw
 
                     cardBuilder(item)
                         .frame(
@@ -155,14 +154,8 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
                             radius: isFront ? 18 : 8,
                             y: isFront ? 10 : 4
                         )
+                        // Scale + orbit only — cards stay face-on (no 3D tilt).
                         .scaleEffect(scale)
-                        .rotation3DEffect(
-                            .radians(Double(tilt)),
-                            axis: axis == .vertical
-                                ? (x: 1, y: 0, z: 0)
-                                : (x: 0, y: 1, z: 0),
-                            perspective: 0.55
-                        )
                         .offset(
                             x: axis == .horizontal ? orbit : 0,
                             y: axis == .vertical ? orbit : 0

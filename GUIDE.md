@@ -223,7 +223,7 @@ let depth = cos(angle)               // 1 front … −1 behind
 let scale = 0.70 + 0.30 * ((depth + 1) / 2)
 ```
 
-A slow swipe rotates the wheel in place: the **top card arcs behind the center and becomes the bottom** (and the reverse the other way) — not a linear “slide off / slide on.” Depth via `scale` + `zIndex` + a light `rotation3DEffect`; keep cards opaque. Infinite looping remaps after settle (`dragOffset = ±pageExtent` → `index ± 1, dragOffset = 0`). Size with `StackedInfiniteCarouselView.stackExtent(…)` so rest neighbors aren’t clipped.
+A slow swipe rotates the wheel in place: the **top card arcs behind the center and becomes the bottom** (and the reverse the other way) — not a linear “slide off / slide on.” Depth via `scale` + `zIndex` only; cards stay face-on (no tilt). Keep cards opaque. Infinite looping remaps after settle (`dragOffset = ±pageExtent` → `index ± 1, dragOffset = 0`). Size with `StackedInfiniteCarouselView.stackExtent(…)` so rest neighbors aren’t clipped.
 
 ---
 
