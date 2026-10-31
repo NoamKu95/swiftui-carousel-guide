@@ -260,8 +260,16 @@ final class InfiniteUIScrollController<Item: Identifiable & Hashable, Page: View
         hosts.removeAll()
         guard let pageBuilder, !items.isEmpty else { return }
         for index in 0..<loopedCount {
-            let host = UIHostingController(rootView: pageBuilder(items[index % items.count]))
+            // Fill the UIKit page frame like finite's containerRelativeFrame proposal.
+            let root = pageBuilder(items[index % items.count])
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            let host = UIHostingController(rootView: root)
             host.view.backgroundColor = .clear
+            host.view.clipsToBounds = false
+            // Avoid safe-area shrinking the card vs finite SwiftUI layout.
+            if #available(iOS 16.4, *) {
+                host.safeAreaRegions = []
+            }
             addChild(host)
             scrollView.addSubview(host.view)
             host.didMove(toParent: self)
@@ -275,23 +283,39 @@ final class InfiniteUIScrollController<Item: Identifiable & Hashable, Page: View
         scrollView.alwaysBounceHorizontal = horizontal
         scrollView.alwaysBounceVertical = !horizontal
 
+        // Match FiniteCarouselLayout.pageSize:
+        // - horizontal: width = bounds - leading/trailing, height = full bounds height
+        // - vertical:   height = bounds - top/bottom, width = full bounds width
+        let pageWidth: CGFloat
+        let pageHeight: CGFloat
+        if horizontal {
+            pageWidth = pageLength
+            pageHeight = max(view.bounds.height, 1)
+        } else {
+            pageWidth = max(view.bounds.width, 1)
+            pageHeight = pageLength
+        }
+
         for (index, host) in hosts.enumerated() {
             let main = CGFloat(index) * strideLength
             if horizontal {
+                // Leading inset mirrors finite contentMargins; page fills remaining width.
                 host.view.frame = CGRect(
                     x: insets.leading + main,
-                    y: insets.top,
-                    width: pageLength,
-                    height: max(view.bounds.height - insets.top - insets.bottom, 1)
+                    y: 0,
+                    width: pageWidth,
+                    height: pageHeight
                 )
             } else {
                 host.view.frame = CGRect(
-                    x: insets.leading,
+                    x: 0,
                     y: insets.top + main,
-                    width: max(view.bounds.width - insets.leading - insets.trailing, 1),
-                    height: pageLength
+                    width: pageWidth,
+                    height: pageHeight
                 )
             }
+            host.view.setNeedsLayout()
+            host.view.layoutIfNeeded()
         }
 
         let contentSpan = (horizontal ? insets.leading + insets.trailing : insets.top + insets.bottom)
