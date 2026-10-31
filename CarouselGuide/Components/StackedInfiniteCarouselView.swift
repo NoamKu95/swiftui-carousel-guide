@@ -1,11 +1,15 @@
 import SwiftUI
 
-/// Infinite carousel that keeps **~3 cards on screen** at once (center + neighbors),
-/// with scale / depth by page offset (no fade).
+/// Infinite carousel that keeps **3 cards on screen** at once (center + neighbors),
+/// with scale / depth by page offset (neighbors stay fully opaque).
 ///
 /// Port of the production `VerticalInfiniteCarouselView` pattern (card-selection style):
 /// stacked transforms instead of a full-page `ScrollView`. Horizontal uses the same
 /// model on the X axis.
+///
+/// Internally we keep five virtual slots (`-2…+2`) so a card can slide into the ±1
+/// seat during a swipe without popping in. Only slots with `|pageOffset| < 1.5`
+/// are drawn — at rest that is exactly **three** cards.
 struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
 
     // MARK: Sizing
@@ -107,25 +111,30 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
         dragFraction: CGFloat
     ) -> some View {
         ZStack {
+            // Five virtual seats for swipe continuity; only |offset| < 1.5 are visible
+            // → three cards at rest (−1, 0, +1).
             ForEach([-2, -1, 0, 1, 2], id: \.self) { virtualOffset in
                 let realIdx = realIndex(for: internalIndex + virtualOffset)
                 let pageOffset = CGFloat(virtualOffset) + dragFraction
                 let absOffset = abs(pageOffset)
+                let isVisible = absOffset < 1.5
                 let translation = pageOffset * interCardSpacing
                 let scale = 1.0 - min(absOffset * 0.15, 0.30)
 
-                cardBuilder(items[realIdx])
-                    .frame(
-                        width: axis == .vertical ? cardCross : cardMain,
-                        height: axis == .vertical ? cardMain : cardCross
-                    )
-                    .scaleEffect(scale)
-                    .offset(
-                        x: axis == .horizontal ? translation : 0,
-                        y: axis == .vertical ? translation : 0
-                    )
-                    .zIndex(1.0 - Double(absOffset))
-                    .allowsHitTesting(virtualOffset == 0 && !isSettling)
+                if isVisible {
+                    cardBuilder(items[realIdx])
+                        .frame(
+                            width: axis == .vertical ? cardCross : cardMain,
+                            height: axis == .vertical ? cardMain : cardCross
+                        )
+                        .scaleEffect(scale)
+                        .offset(
+                            x: axis == .horizontal ? translation : 0,
+                            y: axis == .vertical ? translation : 0
+                        )
+                        .zIndex(1.0 - Double(absOffset))
+                        .allowsHitTesting(virtualOffset == 0 && !isSettling)
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
