@@ -23,7 +23,7 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
     @State private var isProgrammaticAdvance = false
 
     private var pages: [PageRef<Item>] {
-        PageRef.makePages(from: items, infinite: configuration.isInfinite)
+        PageRef<Item>.makePages(from: items, infinite: configuration.isInfinite)
     }
 
     var body: some View {
@@ -119,7 +119,7 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
 
         let logical = pageList[nextIndex].item.id
         let needsRecenter = configuration.isInfinite && pageList[nextIndex].copy != 1
-        let middleID = PageRef.middleID(for: logical, in: pageList)
+        let middleID = PageRef<Item>.middleID(for: logical, in: pageList)
 
         // Sync logical selection + optional silent recenter AFTER the slide completes.
         // Touching selection/recenter in the same turn as the animated scroll was a prior failure mode.
@@ -141,8 +141,11 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
     }
 
     private func handleScrollPositionChanged(_ newValue: String?) {
-        guard let newValue,
-              let page = pages.first(where: { $0.id == newValue }) else { return }
+        guard let newValue else { return }
+        let pageList: [PageRef<Item>] = pages
+        guard let page = pageList.first(where: { (page: PageRef<Item>) in page.id == newValue }) else {
+            return
+        }
 
         // User-driven scroll: keep logical selection live. Programmatic path syncs after animation.
         if !isProgrammaticAdvance, selection != page.item.id {
@@ -156,10 +159,12 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
             return
         }
         let logical = selection ?? items[0].id
+        let pageList: [PageRef<Item>] = pages
         if configuration.isInfinite {
-            scrollPositionID = PageRef.middleID(for: logical, in: pages) ?? pages[items.count].id
+            scrollPositionID = PageRef<Item>.middleID(for: logical, in: pageList)
+                ?? pageList[items.count].id
         } else {
-            scrollPositionID = PageRef.finiteID(for: logical)
+            scrollPositionID = PageRef<Item>.finiteID(for: logical)
         }
         if selection == nil {
             selection = logical
@@ -167,8 +172,9 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
     }
 
     private func syncLogicalSelectionFromScrollIfNeeded() {
+        let pageList: [PageRef<Item>] = pages
         guard let scrollPositionID,
-              let page = pages.first(where: { $0.id == scrollPositionID }),
+              let page = pageList.first(where: { (page: PageRef<Item>) in page.id == scrollPositionID }),
               selection != page.item.id else { return }
         selection = page.item.id
     }
