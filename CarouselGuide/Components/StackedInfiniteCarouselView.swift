@@ -123,6 +123,7 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
                 let scale = absOffset < 0.05 ? 1.0 : 1.0 - min(absOffset * 0.15, 0.30)
 
                 if isVisible {
+                    let isCenter = absOffset < 0.05
                     cardBuilder(items[realIdx])
                         .frame(
                             width: axis == .vertical ? cardCross : cardMain,
@@ -131,6 +132,12 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
                         // Flatten + draw opaque so the focused card fully covers neighbors.
                         .compositingGroup()
                         .opacity(1)
+                        // Stronger lift shadow on the focused card so it reads in front.
+                        .shadow(
+                            color: .primary.opacity(isCenter ? 0.28 : 0.08),
+                            radius: isCenter ? 18 : 6,
+                            y: isCenter ? 10 : 3
+                        )
                         .scaleEffect(scale)
                         .offset(
                             x: axis == .horizontal ? translation : 0,
