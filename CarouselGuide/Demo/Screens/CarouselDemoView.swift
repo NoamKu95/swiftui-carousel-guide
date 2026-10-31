@@ -260,13 +260,13 @@ struct CarouselDemoView: View {
     }
 }
 
-#Preview("3-Up Stack Vertical") {
+#Preview("3D Infinite Vertical") {
     NavigationStack {
         CarouselDemoView(kind: .stackedVertical)
     }
 }
 
-#Preview("3-Up Stack Horizontal") {
+#Preview("3D Infinite Horizontal") {
     NavigationStack {
         CarouselDemoView(kind: .stackedHorizontal)
     }
