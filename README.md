@@ -37,7 +37,8 @@ CarouselGuide/
 │   └── SampleData.swift
 ├── Components/
 │   ├── CarouselConfiguration.swift # Axis, looping, auto-scroll knobs
-│   ├── CarouselView.swift          # Shared pager: finite + infinite via scrollPosition
+│   ├── CarouselView.swift          # Finite SwiftUI + infinite UIKit pager
+│   ├── InfiniteUIScrollPager.swift # Verified middle pin + animated +1 advances
 │   ├── AutoScrollController.swift  # Pause / resume timer
 │   ├── SampleCardView.swift
 │   └── PageIndicatorView.swift

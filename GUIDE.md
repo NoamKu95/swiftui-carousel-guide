@@ -172,26 +172,19 @@ var loopedItems: [LoopedItem<Item>] {
 Wire selection through a *loop* id while exposing the real item id to your UI:
 
 ```swift
-// Finite and infinite share ONE pager. Infinite only adds unique looped page IDs.
-@State private var scrollPositionID: String?   // what `.scrollPosition(id:)` watches
+// Finite: SwiftUI scrollPosition + withAnimation (works).
+// Infinite: UIKit UIScrollView — SwiftUI could not guarantee the first layout
+// was on the middle copy, so the first auto tick overshot the whole buffer.
 
-ScrollView {
-    ForEach(pages) { page in          // infinite: 3 copies with ids "copy|itemID"
-        card(page.item).id(page.id)
-    }
-    .scrollTargetLayout()
-}
-.scrollTargetBehavior(.viewAligned)
-.scrollPosition(id: $scrollPositionID)
+// 1) Pin without animation and *measure* offset before arming the timer:
+scrollView.setContentOffset(middleOffset, animated: false)
+assert(abs(scrollView.contentOffset.y - middleOffset.y) <= 1)
 
-// Timer → animate THAT binding to the next adjacent page id (same as finite):
-withAnimation(.smooth(duration: 0.55)) {
-    scrollPositionID = nextAdjacentPageID
-}
-// Only after the slide: update logical selection / silent middle-copy recenter.
+// 2) Only then allow timer ticks. Each tick advances exactly +1 page:
+scrollView.setContentOffset(nextOffset, animated: true)
 ```
 
-**Requirement:** timer must scroll the `ScrollView` to the next item (animated content offset), not swap view identity or crossfade. Finite auto already does this by animating the `scrollPosition` binding. Infinite must use the **same** path with adjacent unique looped ids — not a parallel UIKit/selection-only path. Verify infinite vertical Auto **slides** like finite vertical Auto.
+**Requirement:** first animated auto-advance must be a single adjacent page from a **verified** middle-copy offset. Soft SwiftUI pins were not enough; the companion app verifies UIKit `contentOffset` before starting auto-scroll. Verify infinite vertical Auto: first tick slides one card (not the whole list), later ticks stay correct.
 
 **When not to use infinite:** short catalogs (2–3 items) where looping feels gimmicky, or content with a meaningful “end” (checkout steps, onboarding).
 
