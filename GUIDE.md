@@ -172,14 +172,20 @@ var loopedItems: [LoopedItem<Item>] {
 Wire selection through a *loop* id while exposing the real item id to your UI:
 
 ```swift
-// Auto-advance: always move one adjacent page forward in the looped buffer.
+// Own a dedicated scroll-position id for the looped strip (not logical selection).
+@State private var infiniteScrollID: String?
+
+// Auto-advance — same call shape as finite: animate the scrollPosition binding directly.
 withAnimation(.smooth(duration: 0.55)) {
-    loopSelection = loopedItems[currentIndex + 1].id
+    infiniteScrollID = nextAdjacentLoopedID(from: infiniteScrollID)
 }
 
-// After the scroll settles (~0.7s), silently snap back to the middle copy.
+// Sync logical selection only AFTER the scroll animation finishes.
+// Never apply Transaction.disablesAnimations in the same turn as the animated advance.
+
+// After settle (~0.75s), silently snap back to the middle copy if needed.
 func recenterIfNeeded() {
-    guard let current = loopedItems.first(where: { $0.id == loopSelection }),
+    guard let current = loopedItems.first(where: { $0.id == infiniteScrollID }),
           current.copy != 1,
           let middle = loopedItems.first(where: {
               $0.copy == 1 && $0.item.id == current.item.id
@@ -188,12 +194,14 @@ func recenterIfNeeded() {
     var transaction = Transaction()
     transaction.disablesAnimations = true
     withTransaction(transaction) {
-        loopSelection = middle.id
+        infiniteScrollID = middle.id
     }
 }
 ```
 
-Because the recenter jump is animation-free and lands on an identical-looking cell, the seam disappears. **Auto-scroll must advance `loopSelection` to the next adjacent looped page** (with the same `withAnimation` as finite mode) — not remap logical `selection` onto the middle copy, which skips the scroll transition. Defer the silent middle-copy recenter until after the animated scroll settles (both axes).
+Because the recenter jump is animation-free and lands on an identical-looking cell, the seam disappears.
+
+**Pitfall that looks like “infinite jumps, finite scrolls”:** finite animates `selection` which *is* the `scrollPosition` id. If infinite animates logical `selection` (or remaps it onto a middle-copy id) and/or syncs selection with `disablesAnimations` in the same turn, SwiftUI cancels the scroll move and the card appears to teleport. Own a separate adjacent looped `scrollID`, animate that directly, sync logical selection afterward, and only then silently recenter (both axes).
 
 **When not to use infinite:** short catalogs (2–3 items) where looping feels gimmicky, or content with a meaningful “end” (checkout steps, onboarding).
 
