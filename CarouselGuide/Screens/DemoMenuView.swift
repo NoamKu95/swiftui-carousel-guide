@@ -130,6 +130,12 @@ private struct DemoRow: View {
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
+        case .stackedThreeInfinite:
+            LinearGradient(
+                colors: [.primary.opacity(0.7), .secondary.opacity(0.95)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
         }
     }
 }

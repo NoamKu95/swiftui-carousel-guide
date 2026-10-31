@@ -12,6 +12,7 @@
 		B1D6A5EA51434AA694545E64 /* CarouselItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1D6A5EA51434AA694545E64 /* CarouselItem.swift */; };
 		B2BCEB30C66042F5B36C5472 /* DemoMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92BCEB30C66042F5B36C5472 /* DemoMenuView.swift */; };
 		B2F8C1D04B7E4E1A9C3D5E60 /* InfinitePagingScrollView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2F8C1D04B7E4E1A9C3D5E60 /* InfinitePagingScrollView.swift */; };
+		B9C0D1E2F3A445566778899A /* StackedInfiniteCarouselView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C0D1E2F3A445566778899A /* StackedInfiniteCarouselView.swift */; };
 		B34B81CFBAE149E38410D049 /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 834B81CFBAE149E38410D049 /* SampleData.swift */; };
 		B4D4B2341A78401E959EB3A1 /* DemoKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4D4B2341A78401E959EB3A1 /* DemoKind.swift */; };
 		B684DC4E6F184347882CB4BC /* CarouselView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E684DC4E6F184347882CB4BC /* CarouselView.swift */; };
@@ -30,6 +31,7 @@
 		834B81CFBAE149E38410D049 /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
 		92BCEB30C66042F5B36C5472 /* DemoMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoMenuView.swift; sourceTree = "<group>"; };
 		A2F8C1D04B7E4E1A9C3D5E60 /* InfinitePagingScrollView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfinitePagingScrollView.swift; sourceTree = "<group>"; };
+		A9C0D1E2F3A445566778899A /* StackedInfiniteCarouselView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackedInfiniteCarouselView.swift; sourceTree = "<group>"; };
 		A6CE3F5AD8924BD6B2E17D2C /* SampleCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleCardView.swift; sourceTree = "<group>"; };
 		C5AC5A3EED3A43A8BDAF4AEF /* CarouselGuide.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CarouselGuide.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D1D6A5EA51434AA694545E64 /* CarouselItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarouselItem.swift; sourceTree = "<group>"; };
@@ -85,6 +87,7 @@
 				6AA7C4C29DF540DB95A9CAFC /* CarouselConfiguration.swift */,
 				E684DC4E6F184347882CB4BC /* CarouselView.swift */,
 				A2F8C1D04B7E4E1A9C3D5E60 /* InfinitePagingScrollView.swift */,
+				A9C0D1E2F3A445566778899A /* StackedInfiniteCarouselView.swift */,
 				E6CE78D918304028918E6CA7 /* AutoScrollController.swift */,
 				A6CE3F5AD8924BD6B2E17D2C /* SampleCardView.swift */,
 				37C961A99F22400681C710AF /* PageIndicatorView.swift */,
@@ -196,6 +199,7 @@
 				B6CE78D918304028918E6CA7 /* AutoScrollController.swift in Sources */,
 				B684DC4E6F184347882CB4BC /* CarouselView.swift in Sources */,
 				B2F8C1D04B7E4E1A9C3D5E60 /* InfinitePagingScrollView.swift in Sources */,
+				B9C0D1E2F3A445566778899A /* StackedInfiniteCarouselView.swift in Sources */,
 				B4D4B2341A78401E959EB3A1 /* DemoKind.swift in Sources */,
 				B2BCEB30C66042F5B36C5472 /* DemoMenuView.swift in Sources */,
 				B74F7217F8DC4F8BB28AF513 /* CarouselDemoView.swift in Sources */,

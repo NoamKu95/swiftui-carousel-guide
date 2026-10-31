@@ -16,7 +16,7 @@ No CocoaPods/SPM packages are required — the app is pure SwiftUI.
 
 ## Demo map
 
-The root menu lists four carousel kinds. Each demo page has an **Auto / Manual** segmented control (8 combinations total):
+The root menu lists five carousel kinds. Each demo page has an **Auto / Manual** segmented control:
 
 | Demo | Axis | Looping | Sample content |
 |------|------|---------|----------------|
@@ -24,6 +24,7 @@ The root menu lists four carousel kinds. Each demo page has an **Auto / Manual**
 | Vertical Carousel | Vertical | Finite | Playlists |
 | Infinite Horizontal | Horizontal | Seamless loop | Travel destinations |
 | Infinite Vertical | Vertical | Seamless loop | Playlists |
+| 3-Up Infinite Stack | Vertical stack | Infinite peek | Card designs |
 
 On **Auto**, the carousel advances on an adjustable interval, pauses while you drag, then resumes. On **Manual**, nothing auto-advances.
 

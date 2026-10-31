@@ -83,4 +83,43 @@ enum SampleData {
             gradientColors: [.primary.opacity(0.7), .secondary.opacity(0.9)]
         )
     ]
+
+    /// Card-design picks for the 3-up stacked infinite demo (credit-card aspect).
+    static let cardDesigns: [CarouselItem] = [
+        CarouselItem(
+            id: "card-onyx",
+            title: "Onyx",
+            subtitle: "Matte black with subtle grain",
+            symbolName: "creditcard.fill",
+            gradientColors: [.primary, .secondary.opacity(0.75)]
+        ),
+        CarouselItem(
+            id: "card-sand",
+            title: "Sand",
+            subtitle: "Warm neutral for everyday spend",
+            symbolName: "creditcard.fill",
+            gradientColors: [.secondary, .primary.opacity(0.7)]
+        ),
+        CarouselItem(
+            id: "card-slate",
+            title: "Slate",
+            subtitle: "Cool tone with sharp contrast",
+            symbolName: "creditcard.fill",
+            gradientColors: [.primary.opacity(0.85), .secondary]
+        ),
+        CarouselItem(
+            id: "card-ink",
+            title: "Ink",
+            subtitle: "Deep wash, high-legibility type",
+            symbolName: "creditcard.fill",
+            gradientColors: [.secondary.opacity(0.9), .primary]
+        ),
+        CarouselItem(
+            id: "card-mist",
+            title: "Mist",
+            subtitle: "Soft gradient for light themes",
+            symbolName: "creditcard.fill",
+            gradientColors: [.primary.opacity(0.65), .secondary.opacity(0.85)]
+        )
+    ]
 }

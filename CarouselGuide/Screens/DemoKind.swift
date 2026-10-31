@@ -5,6 +5,7 @@ enum DemoKind: String, CaseIterable, Identifiable, Hashable {
     case vertical
     case horizontalInfinite
     case verticalInfinite
+    case stackedThreeInfinite
 
     var id: String { rawValue }
 
@@ -14,6 +15,7 @@ enum DemoKind: String, CaseIterable, Identifiable, Hashable {
         case .vertical: "Vertical Carousel"
         case .horizontalInfinite: "Infinite Horizontal"
         case .verticalInfinite: "Infinite Vertical"
+        case .stackedThreeInfinite: "3-Up Infinite Stack"
         }
     }
 
@@ -27,6 +29,8 @@ enum DemoKind: String, CaseIterable, Identifiable, Hashable {
             "Seamless looping across a repeating strip"
         case .verticalInfinite:
             "Endless vertical paging without a hard edge"
+        case .stackedThreeInfinite:
+            "Three cards on screen — center focused, neighbors peek with scale"
         }
     }
 
@@ -36,8 +40,12 @@ enum DemoKind: String, CaseIterable, Identifiable, Hashable {
         case .vertical: "rectangle.split.1x2"
         case .horizontalInfinite: "infinity.circle"
         case .verticalInfinite: "arrow.up.arrow.down.circle"
+        case .stackedThreeInfinite: "rectangle.stack"
         }
     }
+
+    /// True for the stacked peek carousel (not `CarouselView` / UIScrollView).
+    var isStackedThreeInfinite: Bool { self == .stackedThreeInfinite }
 
     var configuration: CarouselConfiguration {
         switch self {
@@ -57,6 +65,9 @@ enum DemoKind: String, CaseIterable, Identifiable, Hashable {
                 isInfinite: true,
                 contentInsets: EdgeInsets(top: 24, leading: 20, bottom: 24, trailing: 20)
             )
+        case .stackedThreeInfinite:
+            // Axis vertical to match the reference card-selection stack.
+            CarouselConfiguration(axis: .vertical, isInfinite: true)
         }
     }
 
@@ -66,6 +77,8 @@ enum DemoKind: String, CaseIterable, Identifiable, Hashable {
             SampleData.destinations
         case .vertical, .verticalInfinite:
             SampleData.playlists
+        case .stackedThreeInfinite:
+            SampleData.cardDesigns
         }
     }
 }

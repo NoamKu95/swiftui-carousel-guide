@@ -1,13 +1,14 @@
 # Building Polished Carousels in SwiftUI (Finite, Infinite, Auto & Manual)
 
-SwiftUI finally gives us first-class paging primitives — `scrollTargetBehavior`, `scrollPosition`, and `containerRelativeFrame` — that feel as crisp as UIKit’s `UICollectionView` without dropping to a representable. This guide walks through four carousel shapes you’ll ship in real apps, each with **auto-scroll** and **manual** modes:
+SwiftUI finally gives us first-class paging primitives — `scrollTargetBehavior`, `scrollPosition`, and `containerRelativeFrame` — that feel as crisp as UIKit’s `UICollectionView` without dropping to a representable. This guide walks through the carousel shapes you’ll ship in real apps, each with **auto-scroll** and **manual** modes:
 
 1. Regular horizontal carousel  
 2. Regular vertical carousel  
 3. Horizontal infinite (seamless loop)  
-4. Vertical infinite (seamless loop)
+4. Vertical infinite (seamless loop)  
+5. **3-up infinite stack** — center card focused, neighbors peek with scale (card-picker style)
 
-All eight combinations live in the companion demo app. The snippets below match that shared `CarouselView` API so you can copy patterns, not one-off screens.
+The first four share `CarouselView`; the 3-up stack is `StackedInfiniteCarouselView`. All live in the companion demo app.
 
 > **Companion app:** https://github.com/NoamKu95/swiftui-carousel-guide — open `CarouselGuide.xcodeproj` (iOS 17+) and explore each demo from the root menu. Every page has an Auto / Manual control.
 

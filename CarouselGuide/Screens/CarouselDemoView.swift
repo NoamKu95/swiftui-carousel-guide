@@ -5,7 +5,9 @@ struct CarouselDemoView: View {
 
     @State private var autoScrollEnabled = true
     @State private var selection: String?
+    @State private var stackedIndex: Int = 0
     @State private var interval: Double = 3.0
+    @StateObject private var stackedAutoScroll = AutoScrollController()
 
     private var configuration: CarouselConfiguration {
         var config = kind.configuration
@@ -15,6 +17,9 @@ struct CarouselDemoView: View {
     }
 
     private var currentIndex: Int {
+        if kind.isStackedThreeInfinite {
+            return stackedIndex
+        }
         guard let selection,
               let index = kind.items.firstIndex(where: { $0.id == selection }) else {
             return 0
@@ -41,7 +46,26 @@ struct CarouselDemoView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             selection = kind.items.first?.id
+            stackedIndex = 0
+            syncStackedAutoScroll()
         }
+        .onChange(of: autoScrollEnabled) { _, _ in
+            syncStackedAutoScroll()
+        }
+        .onChange(of: interval) { _, _ in
+            syncStackedAutoScroll()
+        }
+        .onDisappear {
+            stackedAutoScroll.stop()
+        }
+    }
+
+    private func syncStackedAutoScroll() {
+        guard kind.isStackedThreeInfinite else {
+            stackedAutoScroll.stop()
+            return
+        }
+        stackedAutoScroll.configure(enabled: autoScrollEnabled, interval: interval)
     }
 
     private var controls: some View {
@@ -80,6 +104,11 @@ struct CarouselDemoView: View {
     }
 
     private var modeCaption: String {
+        if kind.isStackedThreeInfinite {
+            return autoScrollEnabled
+                ? "Center card is focused; neighbors peek above and below. Auto-advances the stack."
+                : "Swipe the stack to change the focused card. Neighbors stay visible with scale."
+        }
         if autoScrollEnabled {
             return kind.configuration.isInfinite
                 ? "Auto-advances forever. Dragging pauses playback, then it resumes after a short delay."
@@ -89,6 +118,16 @@ struct CarouselDemoView: View {
     }
 
     private var carouselStage: some View {
+        Group {
+            if kind.isStackedThreeInfinite {
+                stackedStage
+            } else {
+                pagedStage
+            }
+        }
+    }
+
+    private var pagedStage: some View {
         ZStack(alignment: kind.configuration.axis == .horizontal ? .bottom : .trailing) {
             CarouselView(
                 items: kind.items,
@@ -116,11 +155,51 @@ struct CarouselDemoView: View {
         .padding(.horizontal, kind.configuration.axis == .vertical ? 12 : 0)
     }
 
+    /// Matches JuniorCardSelectionSV: carousel + trailing indicator, height from width.
+    private var stackedStage: some View {
+        GeometryReader { geo in
+            let indicatorWidth: CGFloat = 4
+            let spacing: CGFloat = 16
+            let carouselWidth = max(geo.size.width - indicatorWidth - spacing, 120)
+            let aspect: CGFloat = 1.586
+            let stackHeight = StackedInfiniteCarouselView<CarouselItem, EmptyView>
+                .stackExtent(forCardCrossAxis: carouselWidth, aspectRatio: aspect)
+
+            HStack(spacing: spacing) {
+                StackedInfiniteCarouselView(
+                    items: kind.items,
+                    currentIndex: $stackedIndex,
+                    axis: .vertical,
+                    cardAspectRatio: aspect,
+                    autoAdvanceTick: stackedAutoScroll.tick,
+                    autoScrollEnabled: autoScrollEnabled,
+                    onUserDrag: { stackedAutoScroll.pauseForUserInteraction() }
+                ) { item in
+                    SampleCardView(item: item, style: .featured)
+                }
+                .frame(width: carouselWidth, height: min(stackHeight, geo.size.height))
+
+                PageIndicatorView(
+                    count: kind.items.count,
+                    currentIndex: stackedIndex,
+                    axis: .vertical
+                )
+                .frame(width: indicatorWidth)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        }
+        .padding(.horizontal, 20)
+    }
+
     private var footer: some View {
         HStack(spacing: 12) {
             Label(
-                kind.configuration.isInfinite ? "Infinite loop" : "Finite range",
-                systemImage: kind.configuration.isInfinite ? "infinity" : "arrow.left.arrow.right"
+                kind.isStackedThreeInfinite
+                    ? "3-up infinite stack"
+                    : (kind.configuration.isInfinite ? "Infinite loop" : "Finite range"),
+                systemImage: kind.isStackedThreeInfinite
+                    ? "rectangle.stack"
+                    : (kind.configuration.isInfinite ? "infinity" : "arrow.left.arrow.right")
             )
             .foregroundStyle(.secondary)
 
@@ -157,8 +236,8 @@ struct CarouselDemoView: View {
     }
 }
 
-#Preview("Vertical Infinite") {
+#Preview("3-Up Stack") {
     NavigationStack {
-        CarouselDemoView(kind: .verticalInfinite)
+        CarouselDemoView(kind: .stackedThreeInfinite)
     }
 }
