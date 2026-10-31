@@ -84,7 +84,7 @@ enum SampleData {
         )
     ]
 
-    /// Card-design picks for the 3-up stacked infinite demo (credit-card aspect).
+    /// Card-design picks for the 3-up stacked infinite demo (exactly 3 items).
     static let cardDesigns: [CarouselItem] = [
         CarouselItem(
             id: "card-onyx",
@@ -106,20 +106,6 @@ enum SampleData {
             subtitle: "Cool tone with sharp contrast",
             symbolName: "creditcard.fill",
             gradientColors: [.primary.opacity(0.85), .secondary]
-        ),
-        CarouselItem(
-            id: "card-ink",
-            title: "Ink",
-            subtitle: "Deep wash, high-legibility type",
-            symbolName: "creditcard.fill",
-            gradientColors: [.secondary.opacity(0.9), .primary]
-        ),
-        CarouselItem(
-            id: "card-mist",
-            title: "Mist",
-            subtitle: "Soft gradient for light themes",
-            symbolName: "creditcard.fill",
-            gradientColors: [.primary.opacity(0.65), .secondary.opacity(0.85)]
         )
     ]
 }
