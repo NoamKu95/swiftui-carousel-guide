@@ -344,7 +344,7 @@ Before you ship a carousel:
 | File | Role |
 |------|------|
 | `CarouselView.swift` | Finite SwiftUI layout + wires infinite UIKit pager |
-| `InfinitePagingScrollView.swift` | Infinite H/V pager via animated `contentOffset` |
+| `InfinitePagingScrollView.swift` | Infinite H/V pager via animated `contentOffset`. Horizontal hosts expand to the full viewport height (finite parity); vertical keeps the leaner host path. |
 | `AutoScrollController.swift` | Timer lifecycle with resume delay |
 | `CarouselConfiguration.swift` | Shared knobs / axis helpers |
 | `CarouselDemoView.swift` | Auto/Manual UX pattern |
