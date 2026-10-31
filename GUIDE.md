@@ -363,7 +363,7 @@ Before you ship a carousel:
 |------|------|
 | `CarouselView.swift` | Finite SwiftUI layout + wires infinite UIKit pager |
 | `InfinitePagingScrollView.swift` | Infinite H/V pager via animated `contentOffset`. H pages fill the offered stage (same pageSize as finite); V lean path unchanged. |
-| `StackedInfiniteCarouselView.swift` | 3-up infinite peek stack (scale / opacity / zIndex by page offset) |
+| `StackedInfiniteCarouselView.swift` | 3-up infinite circle stack (angle → y / depth / scale) |
 | `AutoScrollController.swift` | Timer lifecycle with resume delay |
 | `CarouselConfiguration.swift` | Shared knobs / axis helpers |
 | `CarouselDemoView.swift` | Auto/Manual UX pattern |
