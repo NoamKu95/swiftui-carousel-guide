@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Shared demo shell: Auto/Manual controls, stage, and footer for every `DemoKind`.
 struct CarouselDemoView: View {
@@ -44,7 +45,7 @@ struct CarouselDemoView: View {
         .navigationTitle(kind.title)
         .navigationBarTitleDisplayMode(.inline)
         // Chevron only — hide the previous screen’s “Carousels” label.
-        .navigationBarBackButtonDisplayMode(.minimal)
+        .background(MinimalBackButtonTitle())
         .onAppear {
             selection = kind.items.first?.id
             stackedIndex = 0
@@ -251,6 +252,27 @@ struct CarouselDemoView: View {
         )
         .background(Color(.systemBackground))
         .ignoresSafeArea()
+    }
+}
+
+/// Sets the parent navigation item to `.minimal` back-button mode so only the
+/// chevron shows (SwiftUI has no first-class modifier for this on all SDKs).
+private struct MinimalBackButtonTitle: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> UIViewController {
+        Controller()
+    }
+
+    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
+
+    private final class Controller: UIViewController {
+        override func viewWillAppear(_ animated: Bool) {
+            super.viewWillAppear(animated)
+            guard let parentItem = navigationController?.viewControllers.dropLast().last?.navigationItem else {
+                return
+            }
+            parentItem.backButtonDisplayMode = .minimal
+            parentItem.backButtonTitle = ""
+        }
     }
 }
 
