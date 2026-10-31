@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Infinite carousel that keeps **~3 cards on screen** at once (center + neighbors),
-/// with scale / opacity / depth by page offset.
+/// with scale / depth by page offset (no fade).
 ///
 /// Port of the production `VerticalInfiniteCarouselView` pattern (card-selection style):
 /// stacked transforms instead of a full-page `ScrollView`. Horizontal uses the same
@@ -10,10 +10,21 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
 
     // MARK: Sizing
 
-    /// Container height (vertical) or width (horizontal) the caller should reserve.
-    /// Matches the Android-derived ratio: container ≈ cardSize × 1.544.
+    /// Center-to-center gap as a fraction of card height (vertical) / width (horizontal).
+    /// Larger than the original ~0.40 so back cards sit farther apart.
+    static let interCardSpacingRatio: CGFloat = 0.55
+
+    /// Scale applied at `|pageOffset| == 1` (used when measuring the stack).
+    private static let neighborScaleAtOne: CGFloat = 1.0 - 0.15
+
+    /// Container extent the caller should reserve so ±1 neighbors aren’t clipped.
+    ///
+    /// `2 × spacing + cardMain × neighborScale` (+ small slack for shadow / drag).
     static func stackExtent(forCardCrossAxis crossAxis: CGFloat, aspectRatio: CGFloat = 1.586) -> CGFloat {
-        (crossAxis / aspectRatio) * 1.544
+        let cardMain = crossAxis / aspectRatio
+        let spacing = cardMain * interCardSpacingRatio
+        let slack = cardMain * 0.12
+        return 2 * spacing + cardMain * neighborScaleAtOne + slack
     }
 
     // MARK: Inputs
@@ -65,15 +76,16 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
 
     var body: some View {
         GeometryReader { geo in
-            // All sizing via ternaries — a bare `if/else` that only assigns locals is
-            // treated as a ViewBuilder branch returning `()`, which won't compile.
+            // Ternaries only — bare if/else assigning locals breaks ViewBuilder.
             let pageExtent = axis == .vertical ? geo.size.height : geo.size.width
             let crossExtent = axis == .vertical ? geo.size.width : geo.size.height
             let cardCross = crossExtent
             let cardMain = axis == .vertical
                 ? crossExtent / cardAspectRatio
                 : crossExtent * cardAspectRatio
-            let interCardSpacing = pageExtent * (90.0 / 350.0)
+            // Spacing from card size (not pageExtent) so gaps stay stable as the
+            // container grows to fit the stack.
+            let interCardSpacing = cardMain * Self.interCardSpacingRatio
             let dragFraction = pageExtent > 0 ? dragOffset / pageExtent : 0
 
             stackContent(
@@ -101,7 +113,6 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
                 let absOffset = abs(pageOffset)
                 let translation = pageOffset * interCardSpacing
                 let scale = 1.0 - min(absOffset * 0.15, 0.30)
-                let alpha = absOffset >= 1.5 ? 0.0 : max(0, 1.0 - Double(absOffset) * 0.30)
 
                 cardBuilder(items[realIdx])
                     .frame(
@@ -109,7 +120,6 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
                         height: axis == .vertical ? cardMain : cardCross
                     )
                     .scaleEffect(scale)
-                    .opacity(alpha)
                     .offset(
                         x: axis == .horizontal ? translation : 0,
                         y: axis == .vertical ? translation : 0
@@ -119,7 +129,7 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipped()
+        // Don’t clip — container height is sized to fit ±1 neighbors.
         .contentShape(Rectangle())
         .gesture(dragGesture(pageExtent: pageExtent))
         .onAppear { lastAutoTick = autoAdvanceTick }
@@ -162,11 +172,9 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
                     : value.predictedEndTranslation.width
                 let threshold = pageExtent / 3
 
-                // Prefer flick intent when prediction is strong.
                 let decisive = abs(predicted) > abs(translation) ? predicted : translation
 
                 if decisive > threshold {
-                    // Drag content down / right → previous item.
                     commitStep(direction: -1, pageExtent: pageExtent)
                 } else if decisive < -threshold {
                     commitStep(direction: +1, pageExtent: pageExtent)

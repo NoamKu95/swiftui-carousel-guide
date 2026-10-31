@@ -177,7 +177,8 @@ struct CarouselDemoView: View {
                 ) { item in
                     SampleCardView(item: item, style: .featured)
                 }
-                .frame(width: carouselWidth, height: min(stackHeight, geo.size.height))
+                // Height from stackExtent so ±1 neighbors fit without clipping.
+                .frame(width: carouselWidth, height: stackHeight)
 
                 PageIndicatorView(
                     count: kind.items.count,

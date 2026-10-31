@@ -216,12 +216,11 @@ Full-page paging is wrong when the product wants **three cards visible** — a f
 
 ```swift
 let pageOffset = CGFloat(virtualOffset) + dragFraction
-let translationY = pageOffset * interCardSpacing   // e.g. pageHeight * (90/350)
+let translationY = pageOffset * interCardSpacing   // ~0.55 × cardHeight
 let scale = 1 - min(abs(pageOffset) * 0.15, 0.30)
-let alpha = abs(pageOffset) >= 1.5 ? 0 : 1 - abs(pageOffset) * 0.30
 ```
 
-Infinite looping uses a large virtual index (remap after the settle animation so `dragOffset = ±pageExtent` becomes `index ± 1, dragOffset = 0` with no jump). Size the stack with `StackedInfiniteCarouselView.stackExtent(forCardCrossAxis:aspectRatio:)` so height tracks card width (credit-card aspect ≈ 1.586).
+Cards stay fully opaque (depth via scale + zIndex only). Infinite looping uses a large virtual index (remap after settle so `dragOffset = ±pageExtent` becomes `index ± 1, dragOffset = 0` with no jump). Size with `StackedInfiniteCarouselView.stackExtent(…)` so the container fits the center card plus ±1 neighbors — don’t clip them.
 
 ---
 
