@@ -172,36 +172,31 @@ var loopedItems: [LoopedItem<Item>] {
 Wire selection through a *loop* id while exposing the real item id to your UI:
 
 ```swift
-// Own a dedicated scroll-position id for the looped strip (not logical selection).
-@State private var infiniteScrollID: String?
+// Triple-buffer pages identified by Int indices (0 ..< 3N). Middle copy starts at N.
+@State private var pageIndex: Int?
 
-// Auto-advance — same call shape as finite: animate the scrollPosition binding directly.
-withAnimation(.smooth(duration: 0.55)) {
-    infiniteScrollID = nextAdjacentLoopedID(from: infiniteScrollID)
-}
-
-// Sync logical selection only AFTER the scroll animation finishes.
-// Never apply Transaction.disablesAnimations in the same turn as the animated advance.
-
-// After settle (~0.75s), silently snap back to the middle copy if needed.
-func recenterIfNeeded() {
-    guard let current = loopedItems.first(where: { $0.id == infiniteScrollID }),
-          current.copy != 1,
-          let middle = loopedItems.first(where: {
-              $0.copy == 1 && $0.item.id == current.item.id
-          }) else { return }
-
-    var transaction = Transaction()
-    transaction.disablesAnimations = true
-    withTransaction(transaction) {
-        infiniteScrollID = middle.id
+ScrollViewReader { proxy in
+    ScrollView {
+        ForEach(0..<items.count * 3, id: \.self) { index in
+            card(items[index % items.count]).id(index)
+        }
+        .scrollTargetLayout()
     }
+    .scrollTargetBehavior(.viewAligned)
+    .scrollPosition(id: $pageIndex)
 }
+
+// Auto-advance — must drive a real content-offset slide (manual already does via gestures).
+// Assigning only a looped string id under withAnimation often *snaps* with no slide.
+withAnimation(.smooth(duration: 0.55)) {
+    pageIndex = current + 1
+    proxy.scrollTo(current + 1, anchor: .center)
+}
+
+// Sync logical selection AFTER the slide (~0.55s). Silent middle-copy recenter after settle.
 ```
 
-Because the recenter jump is animation-free and lands on an identical-looking cell, the seam disappears.
-
-**Pitfall that looks like “infinite jumps, finite scrolls”:** finite animates `selection` which *is* the `scrollPosition` id. If infinite animates logical `selection` (or remaps it onto a middle-copy id) and/or syncs selection with `disablesAnimations` in the same turn, SwiftUI cancels the scroll move and the card appears to teleport. Own a separate adjacent looped `scrollID`, animate that directly, sync logical selection afterward, and only then silently recenter (both axes).
+**Why infinite auto looked like a card swap:** manual infinite already scrolled (gesture physics). Auto paths that only mutated logical `selection` or a looped string `scrollPosition` id—or that wrote other `@State` / `disablesAnimations` in the same turn—updated which page was selected without an interpolated content-offset animation. Fix: adjacent **Int** page index + `proxy.scrollTo` inside `withAnimation` (both axes). Verify by watching neighboring cards **slide across**, not pop.
 
 **When not to use infinite:** short catalogs (2–3 items) where looping feels gimmicky, or content with a meaningful “end” (checkout steps, onboarding).
 

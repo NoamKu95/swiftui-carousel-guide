@@ -2,13 +2,10 @@ import SwiftUI
 
 /// A reusable snapping carousel for finite or infinite (seamless looping) content.
 ///
-/// - Finite: scrolls through `items` once with natural start/end boundaries.
-/// - Infinite: repeats the dataset and recenters so looping feels continuous.
-/// - Auto-scroll: advances on an interval, pauses while the user drags, then resumes.
-///
-/// Infinite auto-scroll mirrors finite: `withAnimation` writes the **scroll-position id**
-/// directly (an adjacent looped page id). Logical `selection` is synced on the next
-/// run-loop turn so no `disablesAnimations` transaction can cancel the scroll move.
+/// Finite auto-scroll animates `scrollPosition` by writing the item id under `withAnimation`.
+/// Infinite auto-scroll must also produce a real content-offset slide: we advance an adjacent
+/// **Int page index** and call `ScrollViewProxy.scrollTo` inside the same `withAnimation`.
+/// Merely assigning a looped string id was snapping without a visible scroll.
 struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
     let items: [Item]
     var configuration: CarouselConfiguration = .horizontal
@@ -17,9 +14,6 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
 
     @StateObject private var autoScroll = AutoScrollController()
     @State private var isDragging = false
-    /// Scroll-position identity for infinite mode (`"copy-itemID"`). Owned here so auto-advance
-    /// mutates it inside the same `withAnimation` call stack as finite `selection` updates.
-    @State private var infiniteScrollID: String?
 
     private var resolvedSelection: Binding<Item.ID?> {
         Binding(
@@ -41,8 +35,9 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
                     items: items,
                     configuration: configuration,
                     selection: resolvedSelection,
-                    scrollID: $infiniteScrollID,
                     isDragging: $isDragging,
+                    autoAdvanceTick: autoScroll.tick,
+                    autoScrollEnabled: configuration.autoScrollEnabled,
                     content: content
                 )
             } else {
@@ -58,12 +53,6 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
         .onAppear {
             if selection == nil {
                 selection = items.first?.id
-            }
-            if configuration.isInfinite, infiniteScrollID == nil {
-                infiniteScrollID = LoopedIdentity.middleCopyID(
-                    for: selection ?? items.first?.id,
-                    items: items
-                )
             }
             autoScroll.configure(
                 enabled: configuration.autoScrollEnabled,
@@ -85,7 +74,10 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
             }
         }
         .onChange(of: autoScroll.tick) { _, _ in
-            advanceSelection()
+            // Finite advances here. Infinite observes `autoScroll.tick` inside its layout
+            // so it can call `ScrollViewProxy.scrollTo` under `withAnimation`.
+            guard !configuration.isInfinite else { return }
+            advanceFiniteSelection()
         }
         .onDisappear {
             autoScroll.stop()
@@ -94,79 +86,19 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
         .accessibilityHint(configuration.isInfinite ? "Loops continuously" : "Scrolls through items")
     }
 
-    private func advanceSelection() {
+    private func advanceFiniteSelection() {
         guard configuration.autoScrollEnabled, !items.isEmpty, !isDragging else { return }
+        guard let current = selection ?? items.first?.id,
+              let index = items.firstIndex(where: { $0.id == current }) else { return }
 
-        // Critical: animate the binding that `.scrollPosition(id:)` observes — same as finite.
+        let nextIndex = index + 1 < items.count ? index + 1 : 0
         withAnimation(.smooth(duration: 0.55)) {
-            if configuration.isInfinite {
-                infiniteScrollID = LoopedIdentity.nextAdjacentID(
-                    items: items,
-                    currentScrollID: infiniteScrollID,
-                    fallbackItemID: selection
-                )
-            } else {
-                guard let current = selection ?? items.first?.id,
-                      let index = items.firstIndex(where: { $0.id == current }) else { return }
-                let nextIndex = index + 1 < items.count ? index + 1 : 0
-                selection = items[nextIndex].id
-            }
+            selection = items[nextIndex].id
         }
 
         #if canImport(UIKit)
         UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.55)
         #endif
-    }
-}
-
-// MARK: - Looped identity helpers
-
-private enum LoopedIdentity {
-    static func makeID<ID: Hashable>(copy: Int, itemID: ID) -> String {
-        "\(copy)-\(String(describing: itemID))"
-    }
-
-    static func middleCopyID<Item: Identifiable>(
-        for itemID: Item.ID?,
-        items: [Item]
-    ) -> String? {
-        guard let itemID else {
-            guard let first = items.first?.id else { return nil }
-            return makeID(copy: 1, itemID: first)
-        }
-        return makeID(copy: 1, itemID: itemID)
-    }
-
-    /// Next page in the triple-buffered strip (always +1) so the scroll view moves forward.
-    static func nextAdjacentID<Item: Identifiable>(
-        items: [Item],
-        currentScrollID: String?,
-        fallbackItemID: Item.ID?
-    ) -> String? {
-        let loopedIDs: [String] = (0..<3).flatMap { copy in
-            items.map { makeID(copy: copy, itemID: $0.id) }
-        }
-        guard !loopedIDs.isEmpty else { return nil }
-
-        let currentIndex: Int = {
-            if let currentScrollID,
-               let index = loopedIDs.firstIndex(of: currentScrollID) {
-                return index
-            }
-            if let fallbackItemID,
-               let index = loopedIDs.firstIndex(of: makeID(copy: 1, itemID: fallbackItemID)) {
-                return index
-            }
-            return loopedIDs.firstIndex(of: makeID(copy: 1, itemID: items[0].id)) ?? 0
-        }()
-
-        if currentIndex + 1 < loopedIDs.count {
-            return loopedIDs[currentIndex + 1]
-        }
-
-        let itemIndex = currentIndex % max(items.count, 1)
-        let nextItemIndex = (itemIndex + 1) % items.count
-        return makeID(copy: 1, itemID: items[nextItemIndex].id)
     }
 }
 
@@ -221,7 +153,7 @@ private struct FiniteCarouselLayout<Item: Identifiable & Hashable, Content: View
                         alignment: .center
                     )
                     .id(item.id)
-                    .modifier(SelectedTraitModifier(isSelected: item.id == selection))
+                    .accessibilityAddTraits(item.id == selection ? .isSelected : [])
             }
         }
     }
@@ -257,211 +189,196 @@ private struct FiniteCarouselLayout<Item: Identifiable & Hashable, Content: View
     }
 }
 
-private struct SelectedTraitModifier: ViewModifier {
-    let isSelected: Bool
-
-    func body(content: Content) -> some View {
-        // Avoid `if isSelected` branching — that swaps view identity mid-scroll and can
-        // cancel `scrollPosition` animation (especially in infinite mode).
-        content.accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
-}
-
 // MARK: - Infinite layout
+
+/// Holds flags/generation without SwiftUI `@State` writes during an in-flight scroll animation.
+/// Prior fixes mutated `@State` in `onChange(of: scrollID)` and cancelled the animation,
+/// so `scrollPosition` jumped (card swap) instead of sliding.
+@MainActor
+private final class InfiniteScrollCoordinator: ObservableObject {
+    var generation: UInt64 = 0
+    var isProgrammaticScroll = false
+}
 
 private struct InfiniteCarouselLayout<Item: Identifiable & Hashable, Content: View>: View {
     let items: [Item]
     let configuration: CarouselConfiguration
     @Binding var selection: Item.ID?
-    /// Parent-owned scroll position — auto-advance mutates this under `withAnimation`.
-    @Binding var scrollID: String?
     @Binding var isDragging: Bool
+    var autoAdvanceTick: UInt64
+    var autoScrollEnabled: Bool
     @ViewBuilder var content: (Item) -> Content
 
-    private var loopedItems: [LoopedItem<Item>] {
-        guard !items.isEmpty else { return [] }
-        return (0..<3).flatMap { copy in
-            items.map { LoopedItem(copy: copy, item: $0) }
-        }
-    }
+    /// Triple-buffered strip. Scroll targets use **stable Int indices** (0 ..< 3N).
+    private var loopCount: Int { items.count * 3 }
 
-    @State private var isRecentering = false
-    @State private var recenterWorkItem: DispatchWorkItem?
-    @State private var suppressSelectionToScrollSync = false
+    private var middleStartIndex: Int { items.count }
 
-    private let scrollAnimation = Animation.smooth(duration: 0.55)
-    private let recenterDelay: TimeInterval = 0.75
+    @State private var pageIndex: Int?
+    @StateObject private var coordinator = InfiniteScrollCoordinator()
+
+    private let slideAnimation = Animation.smooth(duration: 0.55)
+    private let slideDuration: TimeInterval = 0.55
+    private let recenterDelay: TimeInterval = 0.8
 
     var body: some View {
-        GeometryReader { proxy in
-            let pageSize = pageSize(in: proxy.size)
+        GeometryReader { geometry in
+            let pageSize = pageSize(in: geometry.size)
 
-            ScrollView(configuration.axis.scrollAxis, showsIndicators: configuration.showsIndicators) {
-                let layout = configuration.axis == .horizontal
-                    ? AnyLayout(HStackLayout(spacing: configuration.spacing))
-                    : AnyLayout(VStackLayout(spacing: configuration.spacing))
+            ScrollViewReader { proxy in
+                ScrollView(configuration.axis.scrollAxis, showsIndicators: configuration.showsIndicators) {
+                    let layout = configuration.axis == .horizontal
+                        ? AnyLayout(HStackLayout(spacing: configuration.spacing))
+                        : AnyLayout(VStackLayout(spacing: configuration.spacing))
 
-                layout {
-                    ForEach(loopedItems) { looped in
-                        content(looped.item)
-                            .frame(
-                                width: configuration.axis == .horizontal ? pageSize.width : nil,
-                                height: configuration.axis == .vertical ? pageSize.height : nil
-                            )
-                            .containerRelativeFrame(
-                                configuration.axis == .horizontal ? .horizontal : .vertical,
-                                count: 1,
-                                span: 1,
-                                spacing: configuration.spacing,
-                                alignment: .center
-                            )
-                            .id(looped.id)
-                            .modifier(SelectedTraitModifier(isSelected: looped.item.id == selection))
+                    layout {
+                        ForEach(0..<loopCount, id: \.self) { index in
+                            let item = items[index % items.count]
+                            content(item)
+                                .frame(
+                                    width: configuration.axis == .horizontal ? pageSize.width : nil,
+                                    height: configuration.axis == .vertical ? pageSize.height : nil
+                                )
+                                .containerRelativeFrame(
+                                    configuration.axis == .horizontal ? .horizontal : .vertical,
+                                    count: 1,
+                                    span: 1,
+                                    spacing: configuration.spacing,
+                                    alignment: .center
+                                )
+                                // Int id == scrollPosition / scrollTo target. Do not use item.id here —
+                                // duplicates across copies would make programmatic scroll ambiguous.
+                                .id(index)
+                                .accessibilityAddTraits(item.id == selection ? .isSelected : [])
+                        }
+                    }
+                    .scrollTargetLayout()
+                }
+                .scrollTargetBehavior(.viewAligned)
+                .scrollPosition(id: $pageIndex)
+                .contentMargins(
+                    configuration.axis == .horizontal ? .horizontal : .vertical,
+                    configuration.axis == .horizontal
+                        ? configuration.contentInsets.leading
+                        : configuration.contentInsets.top,
+                    for: .scrollContent
+                )
+                .simultaneousGesture(dragGesture)
+                .onAppear {
+                    initializePageIfNeeded(proxy: proxy)
+                }
+                .onChange(of: autoAdvanceTick) { _, _ in
+                    guard autoScrollEnabled, !isDragging else { return }
+                    advanceOnePage(proxy: proxy)
+                }
+                .onChange(of: pageIndex) { _, newValue in
+                    handlePageIndexChanged(newValue)
+                }
+                .onChange(of: isDragging) { _, dragging in
+                    if dragging {
+                        coordinator.generation &+= 1
+                        coordinator.isProgrammaticScroll = false
+                    } else {
+                        scheduleRecenter(proxy: proxy)
                     }
                 }
-                .scrollTargetLayout()
-            }
-            .scrollTargetBehavior(.viewAligned)
-            .scrollPosition(id: $scrollID)
-            .contentMargins(
-                configuration.axis == .horizontal ? .horizontal : .vertical,
-                configuration.axis == .horizontal
-                    ? configuration.contentInsets.leading
-                    : configuration.contentInsets.top,
-                for: .scrollContent
-            )
-            .simultaneousGesture(dragGesture)
-            .onAppear {
-                if scrollID == nil {
-                    var transaction = Transaction()
-                    transaction.disablesAnimations = true
-                    withTransaction(transaction) {
-                        scrollID = LoopedIdentity.middleCopyID(
-                            for: selection ?? items.first?.id,
-                            items: items
-                        )
-                    }
-                }
-            }
-            .onDisappear {
-                recenterWorkItem?.cancel()
-                recenterWorkItem = nil
-            }
-            .onChange(of: scrollID) { _, newValue in
-                handleScrollIDChange(to: newValue)
-            }
-            .onChange(of: selection) { _, newValue in
-                handleExternalSelectionChange(newValue)
-            }
-            .onChange(of: isDragging) { _, dragging in
-                if dragging {
-                    recenterWorkItem?.cancel()
-                } else {
-                    scheduleRecenterAfterScrollSettles()
-                }
             }
         }
     }
 
-    private func handleScrollIDChange(to newValue: String?) {
-        guard !isRecentering, let newValue else { return }
-        guard let match = loopedItems.first(where: { $0.id == newValue }) else { return }
+    private func initializePageIfNeeded(proxy: ScrollViewProxy) {
+        guard pageIndex == nil, !items.isEmpty else { return }
 
-        // Sync logical selection after the scroll animation completes.
-        // Updating selection in the same turn (especially with disablesAnimations)
-        // was cancelling `scrollPosition` animation and looked like a card jump.
-        let itemID = match.item.id
-        suppressSelectionToScrollSync = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.56) {
-            if selection != itemID {
-                selection = itemID
-            }
-            suppressSelectionToScrollSync = false
-        }
+        let initialItemID = selection ?? items.first?.id
+        let itemOffset = items.firstIndex(where: { $0.id == initialItemID }) ?? 0
+        let initial = middleStartIndex + itemOffset
 
-        scheduleRecenterAfterScrollSettles()
-    }
-
-    private func handleExternalSelectionChange(_ itemID: Item.ID?) {
-        guard !isRecentering, !suppressSelectionToScrollSync, let itemID else { return }
-
-        if let scrollID,
-           let match = loopedItems.first(where: { $0.id == scrollID }),
-           match.item.id == itemID {
-            return
-        }
-
-        guard let target = nearestLoopedItem(for: itemID) else { return }
-
-        withAnimation(scrollAnimation) {
-            scrollID = target.id
-        }
-    }
-
-    private func nearestLoopedItem(for itemID: Item.ID) -> LoopedItem<Item>? {
-        let matches = loopedItems.filter { $0.item.id == itemID }
-        guard !matches.isEmpty else { return nil }
-
-        guard let scrollID,
-              let currentIndex = loopedItems.firstIndex(where: { $0.id == scrollID }) else {
-            return matches.first(where: { $0.copy == 1 }) ?? matches.first
-        }
-
-        return matches.min { lhs, rhs in
-            let left = loopedItems.firstIndex(where: { $0.id == lhs.id }).map { abs($0 - currentIndex) } ?? .max
-            let right = loopedItems.firstIndex(where: { $0.id == rhs.id }).map { abs($0 - currentIndex) } ?? .max
-            return left < right
-        }
-    }
-
-    private func scheduleRecenterAfterScrollSettles() {
-        guard !isDragging else { return }
-        recenterWorkItem?.cancel()
-
-        let work = DispatchWorkItem {
-            recenterIfNeeded(force: false)
-        }
-        recenterWorkItem = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + recenterDelay, execute: work)
-    }
-
-    private func recenterIfNeeded(force: Bool) {
-        guard !items.isEmpty, !isDragging else { return }
-
-        let preferredCopy = 1
-        let current: LoopedItem<Item>? = {
-            if let scrollID,
-               let match = loopedItems.first(where: { $0.id == scrollID }) {
-                return match
-            }
-            if let selection,
-               let match = loopedItems.first(where: { $0.copy == preferredCopy && $0.item.id == selection }) {
-                return match
-            }
-            return loopedItems.first(where: { $0.copy == preferredCopy })
-        }()
-
-        guard let current else { return }
-        let shouldRecenter = force || current.copy != preferredCopy
-        guard shouldRecenter else { return }
-
-        guard let middle = loopedItems.first(where: {
-            $0.copy == preferredCopy && $0.item.id == current.item.id
-        }) else { return }
-
-        isRecentering = true
-        suppressSelectionToScrollSync = true
-
+        // Land on middle copy with no animation (first frame only).
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) {
-            scrollID = middle.id
+            pageIndex = initial
+            proxy.scrollTo(initial, anchor: .center)
+        }
+        selection = items[itemOffset].id
+    }
+
+    /// Auto-advance: animate a real scroll to the next adjacent Int page.
+    private func advanceOnePage(proxy: ScrollViewProxy) {
+        guard !items.isEmpty else { return }
+
+        let current = pageIndex ?? middleStartIndex
+        // Always step forward into the buffer; recenter later if we leave the middle copy.
+        let next = min(current + 1, loopCount - 1)
+        guard next != current else { return }
+
+        coordinator.isProgrammaticScroll = true
+        coordinator.generation &+= 1
+        let generation = coordinator.generation
+        let nextItemID = items[next % items.count].id
+
+        // Primary driver: animated scrollTo — this is what produces the finger-drag slide.
+        // Also update pageIndex in the same animation so scrollPosition stays consistent.
+        withAnimation(slideAnimation) {
+            pageIndex = next
+            proxy.scrollTo(next, anchor: .center)
         }
 
-        DispatchQueue.main.async {
-            isRecentering = false
-            suppressSelectionToScrollSync = false
+        #if canImport(UIKit)
+        UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.55)
+        #endif
+
+        // Defer logical selection until the slide finishes — avoids parent chrome rebuilding
+        // mid-animation (page dots / footer) and never uses disablesAnimations here.
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(slideDuration * 1_000_000_000))
+            guard generation == coordinator.generation else { return }
+            if selection != nextItemID {
+                selection = nextItemID
+            }
+            coordinator.isProgrammaticScroll = false
+            scheduleRecenter(proxy: proxy)
         }
+    }
+
+    private func handlePageIndexChanged(_ newValue: Int?) {
+        guard let newValue, !items.isEmpty else { return }
+        // User-driven scroll: keep logical selection live. Programmatic path syncs after slide.
+        guard !coordinator.isProgrammaticScroll else { return }
+        let itemID = items[newValue % items.count].id
+        if selection != itemID {
+            selection = itemID
+        }
+    }
+
+    private func scheduleRecenter(proxy: ScrollViewProxy) {
+        guard !isDragging, !items.isEmpty else { return }
+        coordinator.generation &+= 1
+        let generation = coordinator.generation
+
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(recenterDelay * 1_000_000_000))
+            guard generation == coordinator.generation, !isDragging else { return }
+            recenterToMiddleCopy(proxy: proxy)
+        }
+    }
+
+    private func recenterToMiddleCopy(proxy: ScrollViewProxy) {
+        guard let current = pageIndex, !items.isEmpty else { return }
+        let copy = current / items.count
+        guard copy != 1 else { return }
+
+        let offset = current % items.count
+        let middle = middleStartIndex + offset
+
+        coordinator.isProgrammaticScroll = true
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            pageIndex = middle
+            proxy.scrollTo(middle, anchor: .center)
+        }
+        coordinator.isProgrammaticScroll = false
     }
 
     private func pageSize(in size: CGSize) -> CGSize {
@@ -492,14 +409,5 @@ private struct InfiniteCarouselLayout<Item: Identifiable & Hashable, Content: Vi
             .onEnded { _ in
                 isDragging = false
             }
-    }
-}
-
-private struct LoopedItem<Item: Identifiable & Hashable>: Identifiable, Hashable {
-    let copy: Int
-    let item: Item
-
-    var id: String {
-        LoopedIdentity.makeID(copy: copy, itemID: item.id)
     }
 }
