@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		B2F8C1D04B7E4E1A9C3D5E60 /* InfinitePagingScrollView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2F8C1D04B7E4E1A9C3D5E60 /* InfinitePagingScrollView.swift */; };
 		B1006E96822A45559C12FC92 /* CarouselGuideApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1006E96822A45559C12FC92 /* CarouselGuideApp.swift */; };
 		B1D6A5EA51434AA694545E64 /* CarouselItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1D6A5EA51434AA694545E64 /* CarouselItem.swift */; };
 		B34B81CFBAE149E38410D049 /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 834B81CFBAE149E38410D049 /* SampleData.swift */; };
@@ -23,7 +22,6 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		A2F8C1D04B7E4E1A9C3D5E60 /* InfinitePagingScrollView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfinitePagingScrollView.swift; sourceTree = "<group>"; };
 		C5AC5A3EED3A43A8BDAF4AEF /* CarouselGuide.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CarouselGuide.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E1006E96822A45559C12FC92 /* CarouselGuideApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarouselGuideApp.swift; sourceTree = "<group>"; };
 		D1D6A5EA51434AA694545E64 /* CarouselItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarouselItem.swift; sourceTree = "<group>"; };
@@ -92,7 +90,6 @@
 			children = (
 				6AA7C4C29DF540DB95A9CAFC /* CarouselConfiguration.swift */,
 				E684DC4E6F184347882CB4BC /* CarouselView.swift */,
-				A2F8C1D04B7E4E1A9C3D5E60 /* InfinitePagingScrollView.swift */,
 				E6CE78D918304028918E6CA7 /* AutoScrollController.swift */,
 				A6CE3F5AD8924BD6B2E17D2C /* SampleCardView.swift */,
 				37C961A99F22400681C710AF /* PageIndicatorView.swift */,
@@ -195,7 +192,6 @@
 				B7C961A99F22400681C710AF /* PageIndicatorView.swift in Sources */,
 				B6CE78D918304028918E6CA7 /* AutoScrollController.swift in Sources */,
 				B684DC4E6F184347882CB4BC /* CarouselView.swift in Sources */,
-				B2F8C1D04B7E4E1A9C3D5E60 /* InfinitePagingScrollView.swift in Sources */,
 				B4D4B2341A78401E959EB3A1 /* DemoKind.swift in Sources */,
 				B2BCEB30C66042F5B36C5472 /* DemoMenuView.swift in Sources */,
 				B74F7217F8DC4F8BB28AF513 /* CarouselDemoView.swift in Sources */,
