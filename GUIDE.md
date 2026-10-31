@@ -209,7 +209,7 @@ ScrollView(.vertical) {
 .scrollPosition(id: $loopSelection)
 ```
 
-Same shared `scrollPosition` pager as horizontal infinite / finite — only the scroll axis and looped page list change. Soft haptics on auto-advance help vertical paging feel deliberate without shouting.
+Same verified UIKit middle-pin pager as horizontal infinite — only the scroll axis changes. Soft haptics on auto-advance help vertical paging feel deliberate without shouting.
 
 ---
 
@@ -347,7 +347,8 @@ Before you ship a carousel:
 
 | File | Role |
 |------|------|
-| `CarouselView.swift` | Shared finite/infinite pager (`scrollPosition` + timer advance) |
+| `CarouselView.swift` | Finite SwiftUI pager + wires infinite UIKit pager |
+| `InfiniteUIScrollPager.swift` | Verified middle `contentOffset` pin + animated +1 advances |
 | `AutoScrollController.swift` | Timer lifecycle with resume delay |
 | `CarouselConfiguration.swift` | Shared knobs / axis helpers |
 | `CarouselDemoView.swift` | Auto/Manual UX pattern |
