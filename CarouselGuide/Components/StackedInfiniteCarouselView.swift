@@ -65,67 +65,76 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
 
     var body: some View {
         GeometryReader { geo in
+            // All sizing via ternaries — a bare `if/else` that only assigns locals is
+            // treated as a ViewBuilder branch returning `()`, which won't compile.
             let pageExtent = axis == .vertical ? geo.size.height : geo.size.width
             let crossExtent = axis == .vertical ? geo.size.width : geo.size.height
-            // Card size from cross-axis (width for vertical stack, height for horizontal).
-            let cardMain: CGFloat
-            let cardCross: CGFloat
-            if axis == .vertical {
-                cardCross = crossExtent
-                cardMain = crossExtent / cardAspectRatio
-            } else {
-                cardMain = crossExtent * cardAspectRatio
-                cardCross = crossExtent
-            }
-
-            // Center-to-center spacing — same 90/350 ratio as the reference implementation.
+            let cardCross = crossExtent
+            let cardMain = axis == .vertical
+                ? crossExtent / cardAspectRatio
+                : crossExtent * cardAspectRatio
             let interCardSpacing = pageExtent * (90.0 / 350.0)
             let dragFraction = pageExtent > 0 ? dragOffset / pageExtent : 0
 
-            ZStack {
-                ForEach([-2, -1, 0, 1, 2], id: \.self) { virtualOffset in
-                    let realIdx = realIndex(for: internalIndex + virtualOffset)
-                    let pageOffset = CGFloat(virtualOffset) + dragFraction
-                    let absOffset = abs(pageOffset)
+            stackContent(
+                pageExtent: pageExtent,
+                cardMain: cardMain,
+                cardCross: cardCross,
+                interCardSpacing: interCardSpacing,
+                dragFraction: dragFraction
+            )
+        }
+    }
 
-                    let translation = pageOffset * interCardSpacing
-                    let scale = 1.0 - min(absOffset * 0.15, 0.30)
-                    let alpha = absOffset >= 1.5 ? 0.0 : max(0, 1.0 - Double(absOffset) * 0.30)
+    @ViewBuilder
+    private func stackContent(
+        pageExtent: CGFloat,
+        cardMain: CGFloat,
+        cardCross: CGFloat,
+        interCardSpacing: CGFloat,
+        dragFraction: CGFloat
+    ) -> some View {
+        ZStack {
+            ForEach([-2, -1, 0, 1, 2], id: \.self) { virtualOffset in
+                let realIdx = realIndex(for: internalIndex + virtualOffset)
+                let pageOffset = CGFloat(virtualOffset) + dragFraction
+                let absOffset = abs(pageOffset)
+                let translation = pageOffset * interCardSpacing
+                let scale = 1.0 - min(absOffset * 0.15, 0.30)
+                let alpha = absOffset >= 1.5 ? 0.0 : max(0, 1.0 - Double(absOffset) * 0.30)
 
-                    cardBuilder(items[realIdx])
-                        .frame(
-                            width: axis == .vertical ? cardCross : cardMain,
-                            height: axis == .vertical ? cardMain : cardCross
-                        )
-                        .scaleEffect(scale)
-                        .opacity(alpha)
-                        .offset(
-                            x: axis == .horizontal ? translation : 0,
-                            y: axis == .vertical ? translation : 0
-                        )
-                        .zIndex(1.0 - Double(absOffset))
-                        .allowsHitTesting(virtualOffset == 0 && !isSettling)
-                }
+                cardBuilder(items[realIdx])
+                    .frame(
+                        width: axis == .vertical ? cardCross : cardMain,
+                        height: axis == .vertical ? cardMain : cardCross
+                    )
+                    .scaleEffect(scale)
+                    .opacity(alpha)
+                    .offset(
+                        x: axis == .horizontal ? translation : 0,
+                        y: axis == .vertical ? translation : 0
+                    )
+                    .zIndex(1.0 - Double(absOffset))
+                    .allowsHitTesting(virtualOffset == 0 && !isSettling)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .clipped()
-            .contentShape(Rectangle())
-            .gesture(dragGesture(pageExtent: pageExtent))
-            .onAppear { lastAutoTick = autoAdvanceTick }
-            .onChange(of: autoAdvanceTick) { _, tick in
-                guard autoScrollEnabled, !isSettling, itemCount > 0 else { return }
-                guard tick != lastAutoTick else { return }
-                lastAutoTick = tick
-                commitStep(direction: +1, pageExtent: pageExtent)
-            }
-            .onChange(of: currentIndex) { _, newValue in
-                // External selection (e.g. indicator) — jump virtual index without animation.
-                guard itemCount > 0, !isSettling else { return }
-                let targetReal = ((newValue % itemCount) + itemCount) % itemCount
-                if realIndex(for: internalIndex) != targetReal {
-                    internalIndex = itemCount * 50 + targetReal
-                    dragOffset = 0
-                }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
+        .contentShape(Rectangle())
+        .gesture(dragGesture(pageExtent: pageExtent))
+        .onAppear { lastAutoTick = autoAdvanceTick }
+        .onChange(of: autoAdvanceTick) { _, tick in
+            guard autoScrollEnabled, !isSettling, itemCount > 0 else { return }
+            guard tick != lastAutoTick else { return }
+            lastAutoTick = tick
+            commitStep(direction: +1, pageExtent: pageExtent)
+        }
+        .onChange(of: currentIndex) { _, newValue in
+            guard itemCount > 0, !isSettling else { return }
+            let targetReal = ((newValue % itemCount) + itemCount) % itemCount
+            if realIndex(for: internalIndex) != targetReal {
+                internalIndex = itemCount * 50 + targetReal
+                dragOffset = 0
             }
         }
     }
