@@ -172,28 +172,19 @@ var loopedItems: [LoopedItem<Item>] {
 Wire selection through a *loop* id while exposing the real item id to your UI:
 
 ```swift
-// Auto-advance: always move one adjacent page forward in the looped buffer.
-withAnimation(.smooth(duration: 0.55)) {
-    loopSelection = loopedItems[currentIndex + 1].id
-}
+// Finite: SwiftUI scrollPosition + withAnimation (works).
+// Infinite: UIKit UIScrollView — SwiftUI could not guarantee the first layout
+// was on the middle copy, so the first auto tick overshot the whole buffer.
 
-// After the scroll settles (~0.7s), silently snap back to the middle copy.
-func recenterIfNeeded() {
-    guard let current = loopedItems.first(where: { $0.id == loopSelection }),
-          current.copy != 1,
-          let middle = loopedItems.first(where: {
-              $0.copy == 1 && $0.item.id == current.item.id
-          }) else { return }
+// 1) Pin without animation and *measure* offset before arming the timer:
+scrollView.setContentOffset(middleOffset, animated: false)
+assert(abs(scrollView.contentOffset.y - middleOffset.y) <= 1)
 
-    var transaction = Transaction()
-    transaction.disablesAnimations = true
-    withTransaction(transaction) {
-        loopSelection = middle.id
-    }
-}
+// 2) Only then allow timer ticks. Each tick advances exactly +1 page:
+scrollView.setContentOffset(nextOffset, animated: true)
 ```
 
-Because the recenter jump is animation-free and lands on an identical-looking cell, the seam disappears. **Auto-scroll must advance `loopSelection` to the next adjacent looped page** (with the same `withAnimation` as finite mode) — not remap logical `selection` onto the middle copy, which skips the scroll transition. Defer the silent middle-copy recenter until after the animated scroll settles (both axes).
+**Requirement:** first animated auto-advance must be a single adjacent page from a **verified** middle-copy offset. Soft SwiftUI pins were not enough; the companion app verifies UIKit `contentOffset` before starting auto-scroll. Verify infinite vertical Auto: first tick slides one card (not the whole list), later ticks stay correct.
 
 **When not to use infinite:** short catalogs (2–3 items) where looping feels gimmicky, or content with a meaningful “end” (checkout steps, onboarding).
 
@@ -218,7 +209,7 @@ ScrollView(.vertical) {
 .scrollPosition(id: $loopSelection)
 ```
 
-Same adjacent-page auto-advance and deferred recenter as the horizontal infinite case — vertical only swaps the scroll axis. Soft haptics on auto-advance help vertical paging feel deliberate without shouting.
+Same verified UIKit middle-pin pager as horizontal infinite — only the scroll axis changes. Soft haptics on auto-advance help vertical paging feel deliberate without shouting.
 
 ---
 
@@ -356,7 +347,8 @@ Before you ship a carousel:
 
 | File | Role |
 |------|------|
-| `CarouselView.swift` | Finite + infinite layouts, drag pause hooks |
+| `CarouselView.swift` | Finite SwiftUI pager + wires infinite UIKit pager |
+| `InfiniteUIScrollPager.swift` | Verified middle `contentOffset` pin + animated +1 advances |
 | `AutoScrollController.swift` | Timer lifecycle with resume delay |
 | `CarouselConfiguration.swift` | Shared knobs / axis helpers |
 | `CarouselDemoView.swift` | Auto/Manual UX pattern |

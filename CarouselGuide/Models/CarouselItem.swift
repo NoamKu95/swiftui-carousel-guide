@@ -1,6 +1,7 @@
 import SwiftUI
 
-struct CarouselItem: Identifiable, Hashable, Sendable {
+// Not Sendable: SwiftUI.Color is not Sendable under complete concurrency checking.
+struct CarouselItem: Identifiable, Hashable {
     let id: String
     let title: String
     let subtitle: String
