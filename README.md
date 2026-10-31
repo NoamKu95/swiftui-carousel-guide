@@ -40,6 +40,7 @@ CarouselGuide/
 │   ├── CarouselConfiguration.swift # Axis, looping, auto-scroll knobs
 │   ├── CarouselView.swift          # Finite SwiftUI + infinite UIKit pager
 │   ├── InfinitePagingScrollView.swift # Infinite H/V via animated contentOffset
+│   ├── StackedInfiniteCarouselView.swift # 3-up infinite peek stack
 │   ├── AutoScrollController.swift  # Pause / resume timer
 │   ├── SampleCardView.swift
 │   └── PageIndicatorView.swift

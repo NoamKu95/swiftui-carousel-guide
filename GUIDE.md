@@ -210,6 +210,21 @@ Same UIKit `setContentOffset(_:animated:)` pager as horizontal infinite — only
 
 ---
 
+## 5. 3-up infinite stack (peek + scale)
+
+Full-page paging is wrong when the product wants **three cards visible** — a focused center with scaled neighbors (card design pickers, cover-flow-ish stacks). Don’t use `ScrollView` paging here: drive a small window of virtual offsets (`-2…+2`) with transforms:
+
+```swift
+let pageOffset = CGFloat(virtualOffset) + dragFraction
+let translationY = pageOffset * interCardSpacing   // e.g. pageHeight * (90/350)
+let scale = 1 - min(abs(pageOffset) * 0.15, 0.30)
+let alpha = abs(pageOffset) >= 1.5 ? 0 : 1 - abs(pageOffset) * 0.30
+```
+
+Infinite looping uses a large virtual index (remap after the settle animation so `dragOffset = ±pageExtent` becomes `index ± 1, dragOffset = 0` with no jump). Size the stack with `StackedInfiniteCarouselView.stackExtent(forCardCrossAxis:aspectRatio:)` so height tracks card width (credit-card aspect ≈ 1.586).
+
+---
+
 ## Auto-scroll that respects the user
 
 A carousel that fights the finger is a bug. Own pause/resume in a small controller:
@@ -346,6 +361,7 @@ Before you ship a carousel:
 |------|------|
 | `CarouselView.swift` | Finite SwiftUI layout + wires infinite UIKit pager |
 | `InfinitePagingScrollView.swift` | Infinite H/V pager via animated `contentOffset`. H pages fill the offered stage (same pageSize as finite); V lean path unchanged. |
+| `StackedInfiniteCarouselView.swift` | 3-up infinite peek stack (scale / opacity / zIndex by page offset) |
 | `AutoScrollController.swift` | Timer lifecycle with resume delay |
 | `CarouselConfiguration.swift` | Shared knobs / axis helpers |
 | `CarouselDemoView.swift` | Auto/Manual UX pattern |
