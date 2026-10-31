@@ -18,7 +18,8 @@ enum CarouselAxis: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-struct CarouselConfiguration: Equatable, Sendable {
+// Not Sendable: EdgeInsets is not Sendable under complete concurrency checking.
+struct CarouselConfiguration: Equatable {
     var axis: CarouselAxis = .horizontal
     var isInfinite: Bool = false
     var autoScrollEnabled: Bool = false

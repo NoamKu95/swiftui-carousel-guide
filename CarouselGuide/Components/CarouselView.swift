@@ -238,7 +238,9 @@ private struct PagingScrollLayout<Item: Identifiable & Hashable, Content: View>:
                                 alignment: .center
                             )
                             .id(page.id)
-                            .accessibilityAddTraits(page.item.id == logicalSelection ? .isSelected : [])
+                            .accessibilityAddTraits(
+                                page.item.id == logicalSelection ? .isSelected : AccessibilityTraits()
+                            )
                     }
                 }
                 .scrollTargetLayout()
