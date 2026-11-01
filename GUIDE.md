@@ -62,17 +62,38 @@ struct CarouselConfiguration {
 
 **Why?** One component can express eight product modes (`axis` × `isInfinite` × auto/manual) without duplicating layout code. When a designer asks “can this shelf loop?”, you flip a flag instead of rewriting the screen.
 
-Public call site:
+### How the demo actually calls it
+
+`CarouselView` itself only takes **items**, **configuration**, **selection**, and a **card builder**. Everything else (axis, infinite, auto-scroll, interval, insets) lives on `CarouselConfiguration` — which the demo builds from `DemoKind` and the Auto/Manual controls:
 
 ```swift
+private var configuration: CarouselConfiguration {
+    var config = kind.configuration          // axis, isInfinite, insets from DemoKind
+    config.autoScrollEnabled = autoScrollEnabled
+    config.autoScrollInterval = interval
+    return config
+}
+
 CarouselView(
-    items: destinations,
-    configuration: .init(axis: .horizontal, autoScrollEnabled: true),
-    selection: $selectedID
+    items: kind.items,
+    configuration: configuration,
+    selection: $selection
 ) { item in
-    DestinationCard(item: item)
+    SampleCardView(
+        item: item,
+        style: kind.axis == .vertical ? .compact : .featured
+    )
+    .padding(
+        kind.axis == .horizontal
+            ? EdgeInsets(top: 8, leading: 0, bottom: 28, trailing: 0)
+            : EdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 36)
+    )
 }
 ```
+
+*(From `Demo/Screens/CarouselDemoView.swift` — `pagedStage`.)*
+
+The page dots sit **outside** `CarouselView` in a `ZStack`, driven by the same selection index. Card padding/style are content concerns, not carousel parameters — they stay in the builder so the toolkit doesn’t know about your design system.
 
 ---
 
@@ -406,45 +427,26 @@ Same component for both axes: `StackedInfiniteCarouselView(axis: .vertical)` / `
 
 ## Step 7 — Demo shell (Auto / Manual)
 
-Each demo page shares one screen: segmented Auto/Manual, optional interval, stage, footer.
+Each demo page shares one screen: segmented Auto/Manual, optional interval slider, stage, footer. Configuration is merged from `DemoKind` + the playback controls (see Step 1). Stacked demos don’t use `CarouselView` — they wire `StackedInfiniteCarouselView` with its own auto-scroll inputs:
 
 ```swift
-struct CarouselDemoView: View {
-    let kind: DemoKind
-    @State private var autoScrollEnabled = true
-    @State private var selection: String?
-
-    private var configuration: CarouselConfiguration {
-        var config = kind.configuration
-        config.autoScrollEnabled = autoScrollEnabled
-        return config
-    }
-
-    var body: some View {
-        VStack {
-            Picker("Scroll mode", selection: $autoScrollEnabled) {
-                Text("Auto").tag(true)
-                Text("Manual").tag(false)
-            }
-            .pickerStyle(.segmented)
-
-            if kind.isStacked {
-                StackedInfiniteCarouselView(/* … */)
-            } else {
-                CarouselView(
-                    items: kind.items,
-                    configuration: configuration,
-                    selection: $selection
-                ) { item in
-                    SampleCardView(item: item)
-                }
-            }
-        }
-    }
+StackedInfiniteCarouselView(
+    items: kind.items,
+    currentIndex: $stackedIndex,
+    axis: .vertical,                       // or .horizontal
+    cardAspectRatio: StackCarouselMetrics.creditCardAspectRatio,
+    autoAdvanceTick: stackedAutoScroll.tick,
+    autoScrollEnabled: autoScrollEnabled,
+    onUserDrag: { stackedAutoScroll.pauseForUserInteraction() }
+) { item in
+    SampleCardView(item: item, style: .featured)
 }
+.frame(width: carouselWidth, height: stackHeight)
 ```
 
-**Why one toggle?** It turns six kinds into twelve modes without duplicating layout. The catalog (`DemoKind`) owns titles, sample data, and axis — the screen only binds playback state.
+**Why more parameters here?** The stack isn’t a `ScrollView` pager — it owns drag/settle itself, so auto-scroll can’t hide behind `CarouselConfiguration`. The demo passes the shared `AutoScrollController`’s `tick` and pause callback explicitly (same pattern for horizontal).
+
+**Why one Auto/Manual toggle?** It drives both engines: mutates `configuration` for `CarouselView`, and configures `stackedAutoScroll` for the 3D stack. The catalog (`DemoKind`) owns titles, sample data, and base axis/infinite flags — the screen only binds playback state.
 
 ---
 

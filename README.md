@@ -59,28 +59,38 @@ CarouselGuide/
 
 ### Drop-in usage
 
+`CarouselView` takes items, a `CarouselConfiguration`, selection, and a card builder. Axis / infinite / auto-scroll / interval / insets all live on the configuration (the demo builds it from `DemoKind` + the Auto/Manual controls):
+
 ```swift
+var configuration = CarouselConfiguration(
+    axis: .horizontal,
+    isInfinite: true,
+    autoScrollEnabled: true,
+    autoScrollInterval: 3
+)
 CarouselView(
     items: destinations,
-    configuration: CarouselConfiguration(
-        axis: .horizontal,
-        isInfinite: true,
-        autoScrollEnabled: true,
-        autoScrollInterval: 3
-    ),
+    configuration: configuration,
     selection: $selectedID
 ) { item in
-    SampleCardView(item: item)
+    SampleCardView(item: item, style: .featured)
+        .padding(.bottom, 28)
 }
 ```
+
+The 3D stack is a separate API — it needs axis, aspect ratio, and explicit auto-scroll hooks:
 
 ```swift
 StackedInfiniteCarouselView(
     items: cardDesigns,
     currentIndex: $index,
-    axis: .vertical
+    axis: .vertical,
+    cardAspectRatio: StackCarouselMetrics.creditCardAspectRatio,
+    autoAdvanceTick: autoScroll.tick,
+    autoScrollEnabled: true,
+    onUserDrag: { autoScroll.pauseForUserInteraction() }
 ) { item in
-    SampleCardView(item: item)
+    SampleCardView(item: item, style: .featured)
 }
 .frame(height: StackCarouselMetrics.stackExtent(forCardCrossAxis: width))
 ```
