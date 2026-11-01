@@ -19,10 +19,8 @@ struct FiniteCarouselLayout<Item: Identifiable & Hashable, Content: View>: View 
             .scrollTargetBehavior(.viewAligned)
             .scrollPosition(id: $selection)
             .contentMargins(
-                configuration.axis == .horizontal ? .horizontal : .vertical,
-                configuration.axis == .horizontal
-                    ? configuration.contentInsets.leading
-                    : configuration.contentInsets.top,
+                configuration.axis.marginEdges,
+                configuration.scrollContentMargin,
                 for: .scrollContent
             )
             .simultaneousGesture(dragGesture)

@@ -18,3 +18,13 @@ enum CarouselAxis: String, CaseIterable, Identifiable, Sendable {
         }
     }
 }
+
+extension EdgeInsets {
+    func mainLeading(_ axis: CarouselAxis) -> CGFloat {
+        axis == .horizontal ? leading : top
+    }
+
+    func mainTrailing(_ axis: CarouselAxis) -> CGFloat {
+        axis == .horizontal ? trailing : bottom
+    }
+}

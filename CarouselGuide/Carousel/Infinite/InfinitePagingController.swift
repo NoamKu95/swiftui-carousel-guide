@@ -273,13 +273,3 @@ final class InfinitePagingController<Item: Identifiable & Hashable, Page: View>:
         recenterIfNeeded()
     }
 }
-
-extension EdgeInsets {
-    func mainLeading(_ axis: CarouselAxis) -> CGFloat {
-        axis == .horizontal ? leading : top
-    }
-
-    func mainTrailing(_ axis: CarouselAxis) -> CGFloat {
-        axis == .horizontal ? trailing : bottom
-    }
-}
