@@ -1,39 +1,41 @@
-# Building Polished Carousels in SwiftUI (Finite, Infinite, Auto & Manual)
+# Building Carousels in SwiftUI — Finite, Infinite, Auto & 3D Stack
 
-SwiftUI finally gives us first-class paging primitives — `scrollTargetBehavior`, `scrollPosition`, and `containerRelativeFrame` — that feel as crisp as UIKit’s `UICollectionView` without dropping to a representable. This guide walks through the carousel shapes you’ll ship in real apps, each with **auto-scroll** and **manual** modes:
+A practical guide to the carousel shapes you actually ship: finite and infinite paging (horizontal + vertical), auto vs manual playback, and a 3-up “3D circle” stack. We’ll build each piece step by step, and I’ll call out **why** that piece exists — not just what to paste.
 
-1. Regular horizontal carousel  
-2. Regular vertical carousel  
-3. Horizontal infinite (seamless loop)  
-4. Vertical infinite (seamless loop)  
-5. **3-up infinite stack (vertical)** — cards on a 3D circle; top travels behind and becomes bottom  
-6. **3-up infinite stack (horizontal)** — same wheel on the X axis; left travels behind and becomes right  
+Complete code: https://github.com/NoamKu95/swiftui-carousel-guide  
+Open `CarouselGuide.xcodeproj` (iOS 17+) and run the six demos from the root menu.
 
-The first four share `CarouselView`; both 3-up stacks use `StackedInfiniteCarouselView(axis:)`. All live in the companion demo app.
+### What will you learn?
 
-> **Companion app:** https://github.com/NoamKu95/swiftui-carousel-guide — open `CarouselGuide.xcodeproj` (iOS 17+) and explore each demo from the root menu. Every page has an Auto / Manual control.
+1. How to build a snapping finite carousel in pure SwiftUI (horizontal & vertical).
+2. Why infinite auto-scroll needs a UIKit `UIScrollView` pager — and how to wire it.
+3. How to pause/resume auto-scroll without fighting the user’s finger.
+4. How to build a 3D infinite stack (center + neighbors) that rotates as a circle on either axis.
 
----
+### Pre-required knowledge
 
-## Mental model
-
-A carousel is three concerns stacked on top of a `ScrollView`:
-
-| Concern | SwiftUI lever |
-|--------|----------------|
-| Page size & spacing | `containerRelativeFrame` + `spacing` |
-| Snap / paging feel | `scrollTargetBehavior(.viewAligned)` + `scrollTargetLayout()` |
-| Programmatic selection | `scrollPosition(id:)` bound to an item id |
-| Auto-advance | A timer that writes the next id into that binding |
-| Infinite loop | Repeat the dataset and silently recenter onto the middle copy |
-
-Get those right and horizontal vs vertical is mostly an axis swap. Finite vs infinite is an item-buffer strategy.
+1. Basic SwiftUI (`ScrollView`, `@State`, `@Binding`, generics).
+2. Comfortable reading a small `UIViewControllerRepresentable`.
 
 ---
 
-## Shared configuration
+## Starting point
 
-Keep knobs in one place so demos (and production screens) stay consistent:
+A carousel is not “a fancy `ScrollView`.” It’s three jobs that must stay in sync:
+
+1. **Page size** — each card fills a predictable slot.
+2. **Snap** — a flick rests on a page, not halfway between two.
+3. **Selection** — something outside the scroll view (timer, dots, deep link) can move the page.
+
+Finite vs infinite is a data strategy. Horizontal vs vertical is mostly an axis swap. Auto vs manual is whether a timer is allowed to write selection.
+
+Reusable toolkit in the repo lives under `CarouselGuide/Carousel/`. Demo chrome is under `CarouselGuide/Demo/`.
+
+---
+
+## Step 1 — Shared configuration
+
+Keep every knob in one value type so demos (and production screens) don’t fork.
 
 ```swift
 enum CarouselAxis {
@@ -56,7 +58,9 @@ struct CarouselConfiguration {
 }
 ```
 
-The public view looks like this:
+**Why?** One component can express eight product modes (`axis` × `isInfinite` × auto/manual) without duplicating layout code. When a designer asks “can this shelf loop?”, you flip a flag instead of rewriting the screen.
+
+Public call site:
 
 ```swift
 CarouselView(
@@ -68,22 +72,26 @@ CarouselView(
 }
 ```
 
-One component, eight behaviors — driven by `axis`, `isInfinite`, and `autoScrollEnabled`.
-
 ---
 
-## 1. Regular horizontal carousel
+## Step 2 — Finite snapping carousel (pure SwiftUI)
 
-Use this for featured content, onboarding, product shelves — anywhere the set has a real start and end.
+Use this when the set has a real start and end: featured shelves, onboarding pages, product strips.
 
-### Core layout
+### Layout
 
 ```swift
-ScrollView(.horizontal, showsIndicators: false) {
-    HStack(spacing: configuration.spacing) {
+ScrollView(configuration.axis.scrollAxis, showsIndicators: false) {
+    let layout = configuration.axis == .horizontal
+        ? AnyLayout(HStackLayout(spacing: configuration.spacing))
+        : AnyLayout(VStackLayout(spacing: configuration.spacing))
+
+    layout {
         ForEach(items) { item in
             content(item)
-                .containerRelativeFrame(.horizontal)
+                .containerRelativeFrame(
+                    configuration.axis == .horizontal ? .horizontal : .vertical
+                )
                 .id(item.id)
         }
     }
@@ -91,146 +99,32 @@ ScrollView(.horizontal, showsIndicators: false) {
 }
 .scrollTargetBehavior(.viewAligned)
 .scrollPosition(id: $selection)
-.contentMargins(.horizontal, 20, for: .scrollContent)
+.contentMargins(
+    configuration.axis == .horizontal ? .horizontal : .vertical,
+    /* inset */,
+    for: .scrollContent
+)
 ```
 
-**Why this snaps cleanly**
+**What do we have in this code?**
 
-- `scrollTargetLayout()` marks each child as a valid resting place.  
-- `.viewAligned` parks the scroll view so a target lines up with the visible frame.  
-- `scrollPosition(id:)` gives you a binding you can drive from a timer, page dots, or deep links.  
-- `contentMargins` insets the first/last page without breaking alignment math.
+- `containerRelativeFrame` — each child becomes one “page” of the scroll view.
+- `scrollTargetLayout()` — marks those children as valid resting places.
+- `.viewAligned` — parks the scroll view so a target lines up with the visible frame.
+- `scrollPosition(id:)` — a binding you can drive from a timer, page dots, or navigation.
+- `contentMargins` — insets the first/last page without breaking alignment math.
 
-### Manual vs auto
+**Why this snaps cleanly:** SwiftUI’s paging APIs only work when targets are declared (`scrollTargetLayout`) *and* a behavior is set (`.viewAligned`). Skipping either one is how you get that “almost snapped” feel.
 
-Manual is the default: the user owns the scroll view. For auto-scroll, advance the binding on a timer:
+### Vertical is the same recipe
 
-```swift
-func advance() {
-    guard let current = selection,
-          let index = items.firstIndex(where: { $0.id == current }) else { return }
-
-    let next = items[(index + 1) % items.count].id
-    withAnimation(.smooth(duration: 0.55)) {
-        selection = next
-    }
-}
-```
-
-Finite carousels can either wrap (`% count`) or stop at the last page. The demo wraps so Auto mode keeps moving; Manual mode never calls `advance()`.
+Swap the axis. Put indicators on the **trailing** edge so they don’t fight the title. Prefer slightly larger vertical insets so the active card breathes inside the safe area.
 
 ---
 
-## 2. Regular vertical carousel
+## Step 3 — Auto-scroll that respects the user
 
-Same recipe — swap the axis. Great for story viewers, workout steps, or playlist browsers.
-
-```swift
-ScrollView(.vertical, showsIndicators: false) {
-    VStack(spacing: configuration.spacing) {
-        ForEach(items) { item in
-            content(item)
-                .containerRelativeFrame(.vertical)
-                .id(item.id)
-        }
-    }
-    .scrollTargetLayout()
-}
-.scrollTargetBehavior(.viewAligned)
-.scrollPosition(id: $selection)
-.contentMargins(.vertical, 24, for: .scrollContent)
-```
-
-Tips that make vertical feel intentional:
-
-- Give cards a slightly more compact visual style — tall pages amplify empty space.  
-- Put page indicators on the **trailing** edge (a vertical capsule stack) so they don’t fight the title.  
-- Prefer larger vertical insets so the active card breathes inside the safe area.
-
----
-
-## 3. Horizontal infinite carousel
-
-“Infinite” means the user never hits a hard stop. The classic SwiftUI approach:
-
-1. Render the dataset **three times** (copies `0`, `1`, `2`).  
-2. Start (and stay) on copy `1` — the middle band.  
-3. Whenever the settled page lands on copy `0` or `2`, jump back to the matching item in copy `1` **without animation**.
-
-```swift
-struct LoopedItem<Item: Identifiable & Hashable>: Identifiable, Hashable {
-    let copy: Int
-    let item: Item
-    var id: String { "\(copy)-\(item.id)" }
-}
-
-var loopedItems: [LoopedItem<Item>] {
-    (0..<3).flatMap { copy in
-        items.map { LoopedItem(copy: copy, item: $0) }
-    }
-}
-```
-
-Wire selection through a *loop* id while exposing the real item id to your UI:
-
-```swift
-// Infinite auto-scroll: use UIScrollView (UIViewControllerRepresentable).
-// Triple-buffer pages; auto-advance must move contentOffset with animation:
-scrollView.setContentOffset(nextPageOffset, animated: true)
-
-// After the animation ends, silently recenter onto the middle copy if needed:
-scrollView.setContentOffset(middleCopyOffset, animated: false)
-```
-
-**Why infinite auto looked like a card swap (including after SwiftUI `scrollTo` attempts):** manual infinite already scrolled via gesture physics. Programmatic SwiftUI `scrollPosition` / `ScrollViewProxy.scrollTo` under `withAnimation` still **snapped** to the next looped page for the infinite layout (especially noticeable on **vertical**), so the card appeared to replace in place. Finite auto works because it animates a small non-looping `scrollPosition` id set. **Fix used in the companion app:** infinite mode is a UIKit pager (`InfinitePagingScrollView`) that advances with `setContentOffset(_:animated:)` on both axes; finite stays pure SwiftUI. Verify by watching neighboring cards **slide**, matching finite vertical auto.
-
-**When not to use infinite:** short catalogs (2–3 items) where looping feels gimmicky, or content with a meaningful “end” (checkout steps, onboarding).
-
----
-
-## 4. Vertical infinite carousel
-
-Identical buffering strategy on the vertical axis. This is the pattern behind endless story/reel viewers when your data is a rotating set rather than a network page.
-
-```swift
-ScrollView(.vertical) {
-    VStack(spacing: spacing) {
-        ForEach(loopedItems) { looped in
-            content(looped.item)
-                .containerRelativeFrame(.vertical)
-                .id(looped.id)
-        }
-    }
-    .scrollTargetLayout()
-}
-.scrollTargetBehavior(.viewAligned)
-.scrollPosition(id: $loopSelection)
-```
-
-Same UIKit `setContentOffset(_:animated:)` pager as horizontal infinite — only the scroll axis changes. Soft haptics on auto-advance help vertical paging feel deliberate without shouting.
-
----
-
-## 5–6. 3-up infinite stack (3D circle) — vertical & horizontal
-
-Full-page paging is wrong when the product wants **three cards visible** — a focused center with neighbors (card design pickers). Don’t use `ScrollView` paging: place every item on a ring and drive a continuous `progress` with the drag. The same component serves both axes via `axis: .vertical` / `.horizontal`.
-
-```swift
-let progress = CGFloat(internalIndex) - dragFraction   // live while dragging
-let delta = ringDelta(itemIndex:i, progress:progress)  // shortest signed slots
-let angle = delta * (2 * .pi / CGFloat(itemCount))
-let orbit = sin(angle) * radius      // → y when vertical, x when horizontal
-let depth = cos(angle)               // 1 front … −1 behind
-let scale = 0.70 + 0.30 * ((depth + 1) / 2)
-```
-
-A slow swipe rotates the wheel in place: the **leading neighbor arcs behind the center and becomes the trailing neighbor** (top→bottom vertically, left→right horizontally) — not a linear “slide off / slide on.” Depth via `scale` + `zIndex` only; cards stay face-on (no tilt). Keep cards opaque. Infinite looping remaps after settle (`dragOffset = ±pageExtent` → `index ± 1, dragOffset = 0`). Size with `stackExtent(forCardCrossAxis:aspectRatio:axis:)` (and `cardCrossAxis(fittingStackExtent:…)` when fitting a horizontal wheel into a fixed width) so rest neighbors aren’t clipped.
-
----
-
-## Auto-scroll that respects the user
-
-A carousel that fights the finger is a bug. Own pause/resume in a small controller:
+A carousel that fights the finger is a bug. Own pause/resume in a tiny controller:
 
 ```swift
 @MainActor
@@ -240,10 +134,17 @@ final class AutoScrollController: ObservableObject {
 
     private var timer: AnyCancellable?
     private var resumeWorkItem: DispatchWorkItem?
+    private var interval: TimeInterval = 3
+    private var isEnabled = false
 
-    func configure(enabled: Bool, interval: TimeInterval) { /* rebuild timer */ }
+    func configure(enabled: Bool, interval: TimeInterval) {
+        self.interval = max(interval, 0.8)
+        self.isEnabled = enabled
+        rebuildTimer()
+    }
 
     func pauseForUserInteraction(resumeAfter: TimeInterval = 2.4) {
+        guard isEnabled else { return }
         isPausedByUserInteraction = true
         resumeWorkItem?.cancel()
         let work = DispatchWorkItem { [weak self] in
@@ -254,58 +155,197 @@ final class AutoScrollController: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + resumeAfter, execute: work)
         rebuildTimer()
     }
+
+    func stop() { /* cancel timer + resume work */ }
+
+    private func rebuildTimer() {
+        timer?.cancel()
+        guard isEnabled, !isPausedByUserInteraction else { return }
+        timer = Timer.publish(every: interval, on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] _ in self?.tick &+= 1 }
+    }
 }
 ```
 
-Hook drag state with a simultaneous gesture (or `scrollPhase` on newer OS versions):
+Wire drag → pause:
 
 ```swift
 .simultaneousGesture(
-    DragGesture(minimumDistance: 4)
-        .onChanged { _ in isDragging = true }
+    DragGesture(minimumDistance: 20)
+        .onChanged { _ in if !isDragging { isDragging = true } }
         .onEnded { _ in isDragging = false }
 )
 .onChange(of: isDragging) { _, dragging in
     if dragging { autoScroll.pauseForUserInteraction() }
 }
+.onChange(of: autoScroll.tick) { _, _ in
+    advanceFiniteSelection() // write next id under withAnimation
+}
 ```
 
-Rules of thumb:
+**Why a separate controller?** Screens shouldn’t own `Timer` lifecycle. The controller is reusable for both the SwiftUI finite pager and the UIKit infinite pager (they both just observe `tick`).
 
-- **Manual mode** never starts the timer.  
-- **Auto mode** pauses on drag and resumes after a short idle delay.  
-- Advancing should use `withAnimation` so `scrollPosition` interpolates instead of hard-cutting.  
-- A soft impact haptic on auto-advance sells the motion; skip it on manual snaps (the scroll physics already give feedback).
+**Rules of thumb:**
+
+- Manual mode never starts the timer.
+- Auto mode pauses on drag and resumes after a short idle delay.
+- Finite advance uses `withAnimation` so `scrollPosition` interpolates instead of hard-cutting.
 
 ---
 
-## Page indicators & accessibility
+## Step 4 — Infinite paging (and why SwiftUI isn’t enough)
 
-Indicators are status, not a second scroll view:
+“Infinite” means the user never hits a hard stop. The classic approach:
+
+1. Render the dataset **three times** (copies `0`, `1`, `2`).
+2. Start (and stay) on copy `1` — the middle band.
+3. When the settled page lands on copy `0` or `2`, jump back to the matching item in copy `1` **without animation**.
 
 ```swift
-PageIndicatorView(
-    count: items.count,
-    currentIndex: currentIndex,
-    axis: configuration.axis
+// Conceptual buffer
+var loopedCount: Int { items.count * 3 }
+var middleStart: Int { items.count } // first index of copy 1
+```
+
+### The catch with auto-scroll
+
+Manual infinite already scrolls — gesture physics move `contentOffset`.  
+Programmatic SwiftUI `scrollPosition` / `scrollTo` under `withAnimation` often **snaps** to the next looped page for this triple-buffer layout (especially vertical). Neighboring cards don’t slide; they replace in place. Finite auto still looks fine because it animates a small non-looping id set.
+
+**Why UIKit here?** `UIScrollView.setContentOffset(_:animated:)` always produces a real slide on both axes. Finite stays pure SwiftUI; infinite becomes a representable.
+
+### Representable bridge
+
+```swift
+struct InfinitePagingScrollView<Item: Identifiable & Hashable, Page: View>: UIViewControllerRepresentable {
+    let items: [Item]
+    let axis: CarouselAxis
+    @Binding var selection: Item.ID?
+    @Binding var isDragging: Bool
+    var autoAdvanceTick: UInt64
+    var autoScrollEnabled: Bool
+    @ViewBuilder var pageBuilder: (Item) -> Page
+
+    func updateUIViewController(_ controller: InfinitePagingController<Item, Page>, context: Context) {
+        // …sync axis / builder…
+        if autoScrollEnabled, context.coordinator.lastTick != autoAdvanceTick {
+            context.coordinator.lastTick = autoAdvanceTick
+            if !context.coordinator.dragging {
+                controller.advanceOnePage(animated: true)
+            }
+        }
+    }
+}
+```
+
+### Controller essentials
+
+```swift
+func advanceOnePage(animated: Bool) {
+    let next = min(currentPageIndex() + 1, loopedCount - 1)
+    setOffset(toPage: next, animated: animated) // setContentOffset
+}
+
+func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
+    emitSelection(forPage: currentPageIndex())
+    recenterIfNeeded() // silent jump into middle copy
+}
+```
+
+**Snap physics tip:** decide the landing page from the **lift offset + velocity**, not UIKit’s projected target. Rounding the projected target (and double-counting velocity) is how short flicks cancel or double-advance.
+
+**When not to use infinite:** short catalogs (2–3 items) where looping feels gimmicky, or flows with a meaningful end (checkout, onboarding).
+
+---
+
+## Step 5 — Facade: one `CarouselView`
+
+Hide the finite/infinite split behind a single entry point:
+
+```swift
+struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
+    let items: [Item]
+    var configuration: CarouselConfiguration = .horizontal
+    @Binding var selection: Item.ID?
+    @ViewBuilder var content: (Item) -> Content
+
+    var body: some View {
+        if configuration.isInfinite {
+            InfinitePagingScrollView(/* … */)
+        } else {
+            FiniteCarouselLayout(/* … */)
+        }
+        // own AutoScrollController; forward tick / pause
+    }
+}
+```
+
+**Why a facade?** Call sites shouldn’t care whether the implementation is SwiftUI or UIKit. Product code passes `isInfinite` and gets the correct engine.
+
+---
+
+## Step 6 — 3D infinite stack (3-up circle)
+
+Full-page paging is wrong when the product wants **three cards on screen** — a focused center with peeks (card-design pickers). Don’t use `ScrollView` paging. Place every item on a ring and drive continuous `progress` from the drag.
+
+### The model
+
+```swift
+let progress = CGFloat(internalIndex) - dragFraction  // live while dragging
+let delta = ringDelta(itemIndex: i, progress: progress) // shortest signed slots
+let angle = delta * (2 * .pi / CGFloat(itemCount))
+let orbit = sin(angle) * radius   // y when vertical, x when horizontal
+let depth = cos(angle)            // 1 = front … −1 = behind
+let scale = 0.70 + 0.30 * ((depth + 1) / 2)
+```
+
+**What do we have in this code?**
+
+- `progress` — continuous position on the ring (index + live drag).
+- `ringDelta` — shortest signed distance on a circular item list (handles wrap).
+- `orbit` / `depth` — place the card in the plane and decide who’s in front.
+- `scale` — smaller when behind so the wheel reads as depth **without** tilting the card.
+
+**Why a circle instead of a linear offset?** On a slow swipe the leading neighbor must **arc behind** the center and emerge as the trailing neighbor (top→bottom vertically, left→right horizontally). A linear “slide off / slide on” never shows that path.
+
+### Settling without a jump
+
+```swift
+// Commit one slot, then remap:
+withAnimation(.spring(response: 0.48, dampingFraction: 0.88)) {
+    dragOffset = CGFloat(-direction) * slotExtent
+}
+// After the spring:
+internalIndex += direction
+dragOffset = 0
+currentIndex = realIndex(for: internalIndex)
+```
+
+At `dragOffset = ±slotExtent` the transforms match `(index ± 1, dragOffset = 0)`, so the remap is invisible.
+
+### Sizing
+
+Use shared metrics so the container fits rest neighbors:
+
+```swift
+let height = StackCarouselMetrics.stackExtent(
+    forCardCrossAxis: width,
+    axis: .vertical
 )
 ```
 
-Accessibility checklist that pays off immediately:
+Horizontal demos size the focused card ~88% of stage width and reserve space under the wheel for indicators/shadows so dots aren’t covered.
 
-- Combine title + subtitle on each card (`accessibilityElement(children: .combine)`).  
-- Mark the selected page with `.accessibilityAddTraits(.isSelected)`.  
-- Expose “Page *n* of *m*” on the indicator.  
-- Prefer system fonts and avoid fixed-height text boxes so Dynamic Type can grow.  
-- Don’t rely on color alone — pair the indicator width/height change with a clear accessibility value.
+Cards stay **face-on** (no `rotation3DEffect`). Depth is scale + zIndex + a dark shadow (not `.primary` — that becomes a white glow in Dark Mode).
 
-VoiceOver users typically swipe through cards as regular elements; keep the carousel a containable group rather than a single custom rotor unless you have a strong reason.
+Same component for both axes: `StackedInfiniteCarouselView(axis: .vertical)` / `.horizontal`.
 
 ---
 
-## Putting it together in a demo screen
+## Step 7 — Demo shell (Auto / Manual)
 
-Each demo page in the companion app shares one screen: a segmented **Auto / Manual** control, optional interval slider, the `CarouselView`, and a footer showing finite vs infinite plus the current index.
+Each demo page shares one screen: segmented Auto/Manual, optional interval, stage, footer.
 
 ```swift
 struct CarouselDemoView: View {
@@ -327,40 +367,43 @@ struct CarouselDemoView: View {
             }
             .pickerStyle(.segmented)
 
-            CarouselView(
-                items: kind.items,
-                configuration: configuration,
-                selection: $selection
-            ) { item in
-                SampleCardView(item: item)
+            if kind.isStacked {
+                StackedInfiniteCarouselView(/* … */)
+            } else {
+                CarouselView(
+                    items: kind.items,
+                    configuration: configuration,
+                    selection: $selection
+                ) { item in
+                    SampleCardView(item: item)
+                }
             }
         }
     }
 }
 ```
 
-That single toggle is what turns four kinds into eight modes without duplicating layout code.
+**Why one toggle?** It turns six kinds into twelve modes without duplicating layout. The catalog (`DemoKind`) owns titles, sample data, and axis — the screen only binds playback state.
 
 ---
 
 ## Implementation checklist
 
-Before you ship a carousel:
+Before you ship:
 
 - [ ] Snap feels locked — no half-page rests at normal flick speeds  
-- [ ] First and last pages (finite) aren’t clipped by home indicator / notch  
-- [ ] Infinite recenter is invisible (test by flinging quickly across a seam)  
+- [ ] First/last finite pages aren’t clipped by home indicator / notch  
+- [ ] Infinite recenter is invisible (fling quickly across a seam)  
 - [ ] Auto-scroll pauses on interaction and resumes cleanly  
 - [ ] Manual mode never auto-advances  
-- [ ] Rotation / Split View still page-aligns (relying on `containerRelativeFrame` helps)  
-- [ ] VoiceOver reads card content; page position is announced somehow  
-- [ ] Reduced Motion: consider shortening or disabling auto-scroll animations when `accessibilityReduceMotion` is on
+- [ ] Infinite auto **slides** neighboring cards (not an instant swap)  
+- [ ] 3D stack: slow drag shows the behind-the-center arc  
+- [ ] Shadows stay visible in Dark Mode (use black opacity, not `.primary`)  
+- [ ] VoiceOver reads card content; indicator exposes “Page n of m”
 
 ---
 
 ## What to steal from the companion app
-
-Reusable code lives under `CarouselGuide/Carousel/`; demo chrome under `CarouselGuide/Demo/`.
 
 | File | Role |
 |------|------|
@@ -368,13 +411,11 @@ Reusable code lives under `CarouselGuide/Carousel/`; demo chrome under `Carousel
 | `Carousel/FiniteCarouselLayout.swift` | Pure-SwiftUI snapping pager |
 | `Carousel/Infinite/InfinitePagingScrollView.swift` | UIKit representable bridge |
 | `Carousel/Infinite/InfinitePagingController.swift` | Triple-buffer + snap physics |
-| `Carousel/Stack/StackedInfiniteCarouselView.swift` | 3-up circle stack (V + H) |
+| `Carousel/Stack/StackedInfiniteCarouselView.swift` | 3D circle stack (V + H) |
 | `Carousel/Stack/StackCarouselMetrics.swift` | Axis-aware sizing helpers |
-| `Carousel/AutoScrollController.swift` | Timer lifecycle with resume delay |
+| `Carousel/AutoScrollController.swift` | Timer + resume delay |
 | `Carousel/CarouselConfiguration.swift` | Shared knobs |
-| `Demo/Screens/CarouselDemoView.swift` | Auto/Manual UX pattern |
-| `Demo/Components/SampleCardView.swift` | Fills the page frame it’s given |
 
-Clone the repo, run the six demos, then lift the `Carousel/` folder into your project. Start with a finite horizontal shelf; add infinite and auto-scroll only when the product story needs them.
+Clone the repo, run the six demos, then lift the `Carousel/` folder into your project. Start with a finite horizontal shelf; add infinite and the 3D stack only when the product story needs them.
 
 Ship carousels that feel inevitable — not clever.
