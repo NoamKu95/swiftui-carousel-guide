@@ -50,13 +50,15 @@ struct CarouselConfiguration {
     var axis: CarouselAxis = .horizontal
     var isInfinite: Bool = false
     var autoScrollEnabled: Bool = false
-    var autoScrollInterval: TimeInterval = 3
+    var autoScrollInterval: TimeInterval = 3.0
     var spacing: CGFloat = 16
     var contentInsets: EdgeInsets = EdgeInsets(
         top: 8, leading: 20, bottom: 8, trailing: 20
     )
+    var showsIndicators: Bool = false
 }
 ```
+*(From `Carousel/CarouselConfiguration.swift` + `Carousel/CarouselAxis.swift`.)*
 
 **Why?** One component can express eight product modes (`axis` × `isInfinite` × auto/manual) without duplicating layout code. When a designer asks “can this shelf loop?”, you flip a flag instead of rewriting the screen.
 
@@ -78,47 +80,106 @@ CarouselView(
 
 Use this when the set has a real start and end: featured shelves, onboarding pages, product strips.
 
+In the companion app this is `Carousel/FiniteCarouselLayout.swift` — the engine `CarouselView` uses whenever `isInfinite == false`.
+
 ### Layout
 
 ```swift
-ScrollView(configuration.axis.scrollAxis, showsIndicators: false) {
-    let layout = configuration.axis == .horizontal
-        ? AnyLayout(HStackLayout(spacing: configuration.spacing))
-        : AnyLayout(VStackLayout(spacing: configuration.spacing))
+struct FiniteCarouselLayout<Item: Identifiable & Hashable, Content: View>: View {
+    let items: [Item]
+    let configuration: CarouselConfiguration
+    @Binding var selection: Item.ID?
+    @Binding var isDragging: Bool
+    @ViewBuilder var content: (Item) -> Content
 
-    layout {
-        ForEach(items) { item in
-            content(item)
-                .containerRelativeFrame(
-                    configuration.axis == .horizontal ? .horizontal : .vertical
-                )
-                .id(item.id)
+    var body: some View {
+        GeometryReader { proxy in
+            let pageSize = pageSize(in: proxy.size)
+
+            ScrollView(configuration.axis.scrollAxis, showsIndicators: configuration.showsIndicators) {
+                contentStack(pageSize: pageSize)
+                    .scrollTargetLayout()
+            }
+            .scrollTargetBehavior(.viewAligned)
+            .scrollPosition(id: $selection)
+            .contentMargins(
+                configuration.axis == .horizontal ? .horizontal : .vertical,
+                configuration.axis == .horizontal
+                    ? configuration.contentInsets.leading
+                    : configuration.contentInsets.top,
+                for: .scrollContent
+            )
+            .simultaneousGesture(dragGesture)
         }
     }
-    .scrollTargetLayout()
+
+    @ViewBuilder
+    private func contentStack(pageSize: CGSize) -> some View {
+        let layout = configuration.axis == .horizontal
+            ? AnyLayout(HStackLayout(spacing: configuration.spacing))
+            : AnyLayout(VStackLayout(spacing: configuration.spacing))
+
+        layout {
+            ForEach(items) { item in
+                content(item)
+                    .frame(
+                        width: configuration.axis == .horizontal ? pageSize.width : nil,
+                        height: pageSize.height
+                    )
+                    .containerRelativeFrame(
+                        configuration.axis == .horizontal ? .horizontal : .vertical,
+                        count: 1,
+                        span: 1,
+                        spacing: configuration.spacing,
+                        alignment: .center
+                    )
+                    .id(item.id)
+                    .accessibilityAddTraits(item.id == selection ? .isSelected : [])
+            }
+        }
+    }
+
+    private func pageSize(in size: CGSize) -> CGSize {
+        if configuration.axis == .horizontal {
+            let width = max(
+                size.width
+                    - configuration.contentInsets.leading
+                    - configuration.contentInsets.trailing,
+                120
+            )
+            return CGSize(width: width, height: size.height)
+        }
+        let height = max(
+            size.height
+                - configuration.contentInsets.top
+                - configuration.contentInsets.bottom,
+            120
+        )
+        return CGSize(width: size.width, height: height)
+    }
+
+    private var dragGesture: some Gesture {
+        DragGesture(minimumDistance: 20)
+            .onChanged { _ in if !isDragging { isDragging = true } }
+            .onEnded { _ in isDragging = false }
+    }
 }
-.scrollTargetBehavior(.viewAligned)
-.scrollPosition(id: $selection)
-.contentMargins(
-    configuration.axis == .horizontal ? .horizontal : .vertical,
-    /* inset */,
-    for: .scrollContent
-)
 ```
 
 **What do we have in this code?**
 
-- `containerRelativeFrame` — each child becomes one “page” of the scroll view.
-- `scrollTargetLayout()` — marks those children as valid resting places.
-- `.viewAligned` — parks the scroll view so a target lines up with the visible frame.
-- `scrollPosition(id:)` — a binding you can drive from a timer, page dots, or navigation.
-- `contentMargins` — insets the first/last page without breaking alignment math.
+- `GeometryReader` + `pageSize(in:)` — compute the stage page from the offered size minus insets (same numbers the infinite UIKit pager mirrors for horizontal).
+- `AnyLayout` (`HStack` / `VStack`) — one code path for both axes.
+- Explicit `.frame` **and** `containerRelativeFrame` — fill the stage page, then declare it as a scroll target.
+- `scrollTargetLayout()` + `.viewAligned` + `scrollPosition(id:)` — snap + programmable selection.
+- `contentMargins` — inset the first/last page from `configuration.contentInsets`.
+- `dragGesture` — pause-only signal for auto-scroll (`minimumDistance: 20` so short flicks stay owned by paging).
 
-**Why this snaps cleanly:** SwiftUI’s paging APIs only work when targets are declared (`scrollTargetLayout`) *and* a behavior is set (`.viewAligned`). Skipping either one is how you get that “almost snapped” feel.
+**Why this snaps cleanly:** SwiftUI’s paging APIs only work when targets are declared (`scrollTargetLayout`) *and* a behavior is set (`.viewAligned`). Skipping either one is how you get that “almost snapped” feel. The explicit `pageSize` frame keeps horizontal cards from growing past the stage — the same contract the infinite pager uses.
 
 ### Vertical is the same recipe
 
-Swap the axis. Put indicators on the **trailing** edge so they don’t fight the title. Prefer slightly larger vertical insets so the active card breathes inside the safe area.
+`configuration.axis` swaps scroll axis, stack layout, margins, and `pageSize` math. Put indicators on the **trailing** edge so they don’t fight the title. Prefer slightly larger vertical insets so the active card breathes inside the safe area.
 
 ---
 
