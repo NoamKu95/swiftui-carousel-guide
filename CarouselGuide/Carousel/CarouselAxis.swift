@@ -11,6 +11,11 @@ enum CarouselAxis: String, CaseIterable, Identifiable, Sendable {
         self == .horizontal ? .horizontal : .vertical
     }
 
+    /// Edges for `contentMargins(_:_:for:)` along the scroll axis.
+    var marginEdges: Edge.Set {
+        self == .horizontal ? .horizontal : .vertical
+    }
+
     var title: String {
         switch self {
         case .horizontal: "Horizontal"
