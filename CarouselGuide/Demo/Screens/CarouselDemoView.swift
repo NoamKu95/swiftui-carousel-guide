@@ -194,7 +194,8 @@ struct CarouselDemoView: View {
         let stackHeight = StackCarouselMetrics.stackExtent(
             forCardCrossAxis: carouselWidth,
             aspectRatio: aspect,
-            axis: .vertical
+            axis: .vertical,
+            itemCount: kind.items.count
         )
 
         return HStack(spacing: spacing) {
