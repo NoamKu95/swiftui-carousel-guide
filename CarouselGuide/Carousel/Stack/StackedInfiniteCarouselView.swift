@@ -76,6 +76,8 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
 
     let items: [Item]
     @Binding var currentIndex: Int
+    /// Continuous page position for indicators (`0..<count`, fractional while scrubbing).
+    @Binding var scrubProgress: CGFloat
     var axis: CarouselAxis = .vertical
     var cardAspectRatio: CGFloat = StackCarouselMetrics.creditCardAspectRatio
     /// Override center-to-center gap ratio; `nil` uses the axis + count default.
@@ -105,6 +107,7 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
     init(
         items: [Item],
         currentIndex: Binding<Int>,
+        scrubProgress: Binding<CGFloat> = .constant(0),
         axis: CarouselAxis = .vertical,
         cardAspectRatio: CGFloat = StackCarouselMetrics.creditCardAspectRatio,
         spacingRatio: CGFloat? = nil,
@@ -115,6 +118,7 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
     ) {
         self.items = items
         self._currentIndex = currentIndex
+        self._scrubProgress = scrubProgress
         self.axis = axis
         self.cardAspectRatio = cardAspectRatio
         self.spacingRatio = spacingRatio
@@ -144,12 +148,14 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
             let dragFraction = dragOffset / slotExtent
             let progress = CGFloat(internalIndex) - dragFraction
 
+            let logical = Self.logicalPageProgress(virtual: progress, count: itemCount)
             stackContent(
                 slotExtent: slotExtent,
                 cardMain: cardMain,
                 cardCross: cardCross,
                 interCardSpacing: interCardSpacing,
-                progress: progress
+                progress: progress,
+                logicalProgress: logical
             )
         }
     }
@@ -160,7 +166,8 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
         cardMain: CGFloat,
         cardCross: CGFloat,
         interCardSpacing: CGFloat,
-        progress: CGFloat
+        progress: CGFloat,
+        logicalProgress: CGFloat
     ) -> some View {
         let step = stepAngle
         let radius = ringRadius(spacing: interCardSpacing)
@@ -192,7 +199,13 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
         .gesture(dragGesture(slotExtent: slotExtent))
-        .onAppear { lastAutoTick = autoAdvanceTick }
+        .onAppear {
+            lastAutoTick = autoAdvanceTick
+            publishScrubProgress(logicalProgress)
+        }
+        .onChange(of: logicalProgress) { _, value in
+            publishScrubProgress(value)
+        }
         .onChange(of: autoAdvanceTick) { _, tick in
             guard autoScrollEnabled, !isSettling, itemCount > 0 else { return }
             guard tick != lastAutoTick else { return }
@@ -368,6 +381,21 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
     private func realIndex(for virtual: Int) -> Int {
         guard itemCount > 0 else { return 0 }
         return ((virtual % itemCount) + itemCount) % itemCount
+    }
+
+    /// Maps the virtual ring progress onto `0..<count` for page indicators.
+    static func logicalPageProgress(virtual: CGFloat, count: Int) -> CGFloat {
+        guard count > 0 else { return 0 }
+        let n = CGFloat(count)
+        var x = virtual.truncatingRemainder(dividingBy: n)
+        if x < 0 { x += n }
+        return x
+    }
+
+    private func publishScrubProgress(_ value: CGFloat) {
+        if abs(scrubProgress - value) > 0.0005 {
+            scrubProgress = value
+        }
     }
 
     /// Shortest signed distance — visibility culling + 4+ slot orbits.

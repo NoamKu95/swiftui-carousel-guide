@@ -8,6 +8,8 @@ struct CarouselDemoView: View {
     @State private var autoScrollEnabled = true
     @State private var selection: String?
     @State private var stackedIndex = 0
+    /// Fractional page position while the 3D stack is scrubbing / settling.
+    @State private var stackedProgress: CGFloat = 0
     @State private var interval = 3.0
     @StateObject private var stackedAutoScroll = AutoScrollController()
 
@@ -49,6 +51,7 @@ struct CarouselDemoView: View {
         .onAppear {
             selection = kind.items.first?.id
             stackedIndex = 0
+            stackedProgress = 0
             syncStackedAutoScroll()
         }
         .onChange(of: autoScrollEnabled) { _, _ in syncStackedAutoScroll() }
@@ -132,7 +135,7 @@ struct CarouselDemoView: View {
 
             PageIndicatorView(
                 count: kind.items.count,
-                currentIndex: currentIndex,
+                progress: CGFloat(currentIndex),
                 axis: kind.axis
             )
             .padding(kind.axis == .horizontal ? 12 : 16)
@@ -166,6 +169,7 @@ struct CarouselDemoView: View {
             StackedInfiniteCarouselView(
                 items: kind.items,
                 currentIndex: $stackedIndex,
+                scrubProgress: $stackedProgress,
                 axis: .horizontal,
                 cardAspectRatio: aspect,
                 autoAdvanceTick: stackedAutoScroll.tick,
@@ -180,7 +184,7 @@ struct CarouselDemoView: View {
 
             PageIndicatorView(
                 count: kind.items.count,
-                currentIndex: stackedIndex,
+                progress: stackedProgress,
                 axis: .horizontal
             )
             .frame(height: indicatorRow)
@@ -202,6 +206,7 @@ struct CarouselDemoView: View {
             StackedInfiniteCarouselView(
                 items: kind.items,
                 currentIndex: $stackedIndex,
+                scrubProgress: $stackedProgress,
                 axis: .vertical,
                 cardAspectRatio: aspect,
                 autoAdvanceTick: stackedAutoScroll.tick,
@@ -214,7 +219,7 @@ struct CarouselDemoView: View {
 
             PageIndicatorView(
                 count: kind.items.count,
-                currentIndex: stackedIndex,
+                progress: stackedProgress,
                 axis: .vertical
             )
             .frame(width: indicatorThickness)
