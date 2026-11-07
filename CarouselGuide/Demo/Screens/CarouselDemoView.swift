@@ -7,6 +7,8 @@ struct CarouselDemoView: View {
 
     @State private var autoScrollEnabled = true
     @State private var selection: String?
+    /// Fractional page position for finite / infinite `CarouselView` indicators.
+    @State private var pagedProgress: CGFloat = 0
     @State private var stackedIndex = 0
     /// Fractional page position while the 3D stack is scrubbing / settling.
     @State private var stackedProgress: CGFloat = 0
@@ -50,6 +52,7 @@ struct CarouselDemoView: View {
         .background(MinimalBackButtonTitle())
         .onAppear {
             selection = kind.items.first?.id
+            pagedProgress = 0
             stackedIndex = 0
             stackedProgress = 0
             syncStackedAutoScroll()
@@ -120,7 +123,8 @@ struct CarouselDemoView: View {
             CarouselView(
                 items: kind.items,
                 configuration: configuration,
-                selection: $selection
+                selection: $selection,
+                scrubProgress: $pagedProgress
             ) { item in
                 SampleCardView(
                     item: item,
@@ -135,7 +139,7 @@ struct CarouselDemoView: View {
 
             PageIndicatorView(
                 count: kind.items.count,
-                progress: CGFloat(currentIndex),
+                progress: pagedProgress,
                 axis: kind.axis
             )
             .padding(kind.axis == .horizontal ? 12 : 16)

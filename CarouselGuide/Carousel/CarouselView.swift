@@ -7,10 +7,15 @@ import SwiftUI
 /// - **Infinite:** UIKit `UIScrollView` representable — `setContentOffset(_:animated:)`
 ///   so neighboring cards visibly slide on both axes (SwiftUI programmatic scroll
 ///   only snapped for the triple-buffer layout).
+///
+/// Both paths publish continuous `scrubProgress` so page indicators can morph
+/// mid-swipe (and during auto-advance), not only on page settle.
 struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
     let items: [Item]
     var configuration: CarouselConfiguration = .horizontal
     @Binding var selection: Item.ID?
+    /// Continuous page position (`0..<count`, fractional while scrolling).
+    @Binding var scrubProgress: CGFloat
     @ViewBuilder var content: (Item) -> Content
 
     @StateObject private var autoScroll = AutoScrollController()
@@ -21,6 +26,20 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
             get: { selection ?? items.first?.id },
             set: { selection = $0 }
         )
+    }
+
+    init(
+        items: [Item],
+        configuration: CarouselConfiguration = .horizontal,
+        selection: Binding<Item.ID?>,
+        scrubProgress: Binding<CGFloat> = .constant(0),
+        @ViewBuilder content: @escaping (Item) -> Content
+    ) {
+        self.items = items
+        self.configuration = configuration
+        self._selection = selection
+        self._scrubProgress = scrubProgress
+        self.content = content
     }
 
     var body: some View {
@@ -40,6 +59,7 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
                         contentInsets: configuration.contentInsets,
                         selection: resolvedSelection,
                         isDragging: $isDragging,
+                        scrubProgress: $scrubProgress,
                         autoAdvanceTick: autoScroll.tick,
                         autoScrollEnabled: configuration.autoScrollEnabled,
                         pageBuilder: content
@@ -52,6 +72,7 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
                     configuration: configuration,
                     selection: resolvedSelection,
                     isDragging: $isDragging,
+                    scrubProgress: $scrubProgress,
                     content: content
                 )
             }
@@ -59,6 +80,10 @@ struct CarouselView<Item: Identifiable & Hashable, Content: View>: View {
         .onAppear {
             if selection == nil {
                 selection = items.first?.id
+            }
+            if let selection,
+               let index = items.firstIndex(where: { $0.id == selection }) {
+                scrubProgress = CGFloat(index)
             }
             syncAutoScroll()
         }

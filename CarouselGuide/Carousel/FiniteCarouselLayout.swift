@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Pure-SwiftUI snapping pager used by `CarouselView` when `isInfinite == false`.
 struct FiniteCarouselLayout<Item: Identifiable & Hashable, Content: View>: View {
@@ -6,15 +7,29 @@ struct FiniteCarouselLayout<Item: Identifiable & Hashable, Content: View>: View 
     let configuration: CarouselConfiguration
     @Binding var selection: Item.ID?
     @Binding var isDragging: Bool
+    @Binding var scrubProgress: CGFloat
     @ViewBuilder var content: (Item) -> Content
 
     var body: some View {
         GeometryReader { proxy in
             let pageSize = pageSize(in: proxy.size)
+            let pageMain = configuration.axis == .horizontal ? pageSize.width : pageSize.height
+            let pageStride = max(pageMain + configuration.spacing, 1)
 
             ScrollView(configuration.axis.scrollAxis, showsIndicators: configuration.showsIndicators) {
                 contentStack(pageSize: pageSize)
                     .scrollTargetLayout()
+                    .background {
+                        // KVO on the underlying UIScrollView so scrub tracks both
+                        // finger dragging and animated `scrollPosition` auto-advance.
+                        FiniteScrollOffsetObserver(
+                            axis: configuration.axis,
+                            pageStride: pageStride,
+                            onProgress: { progress in
+                                publishScrub(progress)
+                            }
+                        )
+                    }
             }
             .scrollTargetBehavior(.viewAligned)
             .scrollPosition(id: $selection)
@@ -24,6 +39,9 @@ struct FiniteCarouselLayout<Item: Identifiable & Hashable, Content: View>: View 
                 for: .scrollContent
             )
             .simultaneousGesture(dragGesture)
+            .onAppear {
+                syncScrubToSelection()
+            }
         }
     }
 
@@ -73,6 +91,21 @@ struct FiniteCarouselLayout<Item: Identifiable & Hashable, Content: View>: View 
         return CGSize(width: size.width, height: height)
     }
 
+    private func publishScrub(_ value: CGFloat) {
+        if abs(scrubProgress - value) > 0.0005 {
+            scrubProgress = value
+        }
+    }
+
+    private func syncScrubToSelection() {
+        guard let selection,
+              let index = items.firstIndex(where: { $0.id == selection }) else {
+            publishScrub(0)
+            return
+        }
+        publishScrub(CGFloat(index))
+    }
+
     /// Pause-only signal for auto-scroll. High `minimumDistance` keeps short flicks
     /// owned by `ScrollView` paging instead of this gesture.
     private var dragGesture: some Gesture {
@@ -83,5 +116,78 @@ struct FiniteCarouselLayout<Item: Identifiable & Hashable, Content: View>: View 
             .onEnded { _ in
                 isDragging = false
             }
+    }
+}
+
+/// Observes `contentOffset` on the enclosing `UIScrollView` under a SwiftUI
+/// `ScrollView`, publishing fractional page progress for indicator scrubbing.
+private struct FiniteScrollOffsetObserver: UIViewRepresentable {
+    var axis: CarouselAxis
+    var pageStride: CGFloat
+    var onProgress: (CGFloat) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onProgress: onProgress)
+    }
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView(frame: .zero)
+        view.isUserInteractionEnabled = false
+        view.backgroundColor = .clear
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        context.coordinator.axis = axis
+        context.coordinator.pageStride = pageStride
+        context.coordinator.onProgress = onProgress
+        context.coordinator.attachIfNeeded(from: uiView)
+    }
+
+    final class Coordinator {
+        var axis: CarouselAxis = .horizontal
+        var pageStride: CGFloat = 1
+        var onProgress: (CGFloat) -> Void
+        private weak var scrollView: UIScrollView?
+        private var observation: NSKeyValueObservation?
+
+        init(onProgress: @escaping (CGFloat) -> Void) {
+            self.onProgress = onProgress
+        }
+
+        func attachIfNeeded(from view: UIView) {
+            // Walk up after SwiftUI inserts us into the hierarchy.
+            DispatchQueue.main.async { [weak self, weak view] in
+                guard let self, let view else { return }
+                guard let scroll = view.enclosingScrollView() else { return }
+                guard scroll !== self.scrollView else {
+                    self.emit(from: scroll)
+                    return
+                }
+                self.scrollView = scroll
+                self.observation = scroll.observe(\.contentOffset, options: [.initial, .new]) { [weak self] scrollView, _ in
+                    self?.emit(from: scrollView)
+                }
+            }
+        }
+
+        private func emit(from scrollView: UIScrollView) {
+            guard pageStride > 0.5 else { return }
+            let raw = axis == .horizontal ? scrollView.contentOffset.x : scrollView.contentOffset.y
+            onProgress(raw / pageStride)
+        }
+    }
+}
+
+private extension UIView {
+    func enclosingScrollView() -> UIScrollView? {
+        var current: UIView? = self
+        while let view = current {
+            if let scroll = view as? UIScrollView {
+                return scroll
+            }
+            current = view.superview
+        }
+        return nil
     }
 }

@@ -30,6 +30,8 @@ final class InfinitePagingController<Item: Identifiable & Hashable, Page: View>:
     var pageBuilder: ((Item) -> Page)?
     var onSelect: ((Item.ID) -> Void)?
     var onDragging: ((Bool) -> Void)?
+    /// Fractional logical page (`0..<count`) while scrolling / animating.
+    var onScrubProgress: ((CGFloat) -> Void)?
 
     private(set) var items: [Item] = []
 
@@ -96,6 +98,7 @@ final class InfinitePagingController<Item: Identifiable & Hashable, Page: View>:
         let page = middleStart + offset
         setOffset(toPage: page, animated: false)
         emitSelection(forPage: page)
+        emitScrubProgress()
     }
 
     /// Animated content-offset advance — this is the auto-scroll slide.
@@ -206,14 +209,29 @@ final class InfinitePagingController<Item: Identifiable & Hashable, Page: View>:
         onSelect?(items[index % items.count].id)
     }
 
+    private func emitScrubProgress() {
+        guard !items.isEmpty, strideLength > 0 else { return }
+        let raw = axis == .horizontal ? scrollView.contentOffset.x : scrollView.contentOffset.y
+        let page = raw / strideLength
+        let n = CGFloat(items.count)
+        var logical = page.truncatingRemainder(dividingBy: n)
+        if logical < 0 { logical += n }
+        onScrubProgress?(logical)
+    }
+
     private func recenterIfNeeded() {
         guard !items.isEmpty else { return }
         let current = currentPageIndex()
         guard current / items.count != 1 else { return }
         setOffset(toPage: clampedMiddle(current), animated: false)
+        emitScrubProgress()
     }
 
     // MARK: UIScrollViewDelegate
+
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        emitScrubProgress()
+    }
 
     func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
         onDragging?(true)

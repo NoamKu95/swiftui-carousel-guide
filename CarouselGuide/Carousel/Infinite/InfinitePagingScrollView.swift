@@ -13,12 +13,13 @@ struct InfinitePagingScrollView<Item: Identifiable & Hashable, Page: View>: UIVi
     let contentInsets: EdgeInsets
     @Binding var selection: Item.ID?
     @Binding var isDragging: Bool
+    @Binding var scrubProgress: CGFloat
     var autoAdvanceTick: UInt64
     var autoScrollEnabled: Bool
     @ViewBuilder var pageBuilder: (Item) -> Page
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(selection: $selection, isDragging: $isDragging)
+        Coordinator(selection: $selection, isDragging: $isDragging, scrubProgress: $scrubProgress)
     }
 
     func makeUIViewController(context: Context) -> InfinitePagingController<Item, Page> {
@@ -56,17 +57,26 @@ struct InfinitePagingScrollView<Item: Identifiable & Hashable, Page: View>: UIVi
         controller.onDragging = { dragging in
             context.coordinator.applyDragging(dragging)
         }
+        controller.onScrubProgress = { progress in
+            context.coordinator.applyScrubProgress(progress)
+        }
     }
 
     final class Coordinator {
         var selection: Binding<Item.ID?>
         var isDragging: Binding<Bool>
+        var scrubProgress: Binding<CGFloat>
         var lastTick: UInt64 = 0
         var dragging = false
 
-        init(selection: Binding<Item.ID?>, isDragging: Binding<Bool>) {
+        init(
+            selection: Binding<Item.ID?>,
+            isDragging: Binding<Bool>,
+            scrubProgress: Binding<CGFloat>
+        ) {
             self.selection = selection
             self.isDragging = isDragging
+            self.scrubProgress = scrubProgress
         }
 
         func applySelection(_ id: Item.ID) {
@@ -79,6 +89,12 @@ struct InfinitePagingScrollView<Item: Identifiable & Hashable, Page: View>: UIVi
             dragging = value
             if isDragging.wrappedValue != value {
                 isDragging.wrappedValue = value
+            }
+        }
+
+        func applyScrubProgress(_ value: CGFloat) {
+            if abs(scrubProgress.wrappedValue - value) > 0.0005 {
+                scrubProgress.wrappedValue = value
             }
         }
     }
