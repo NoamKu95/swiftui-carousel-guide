@@ -420,6 +420,11 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
     private func dragGesture(slotExtent: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: 8)
             .onChanged { value in
+                // Cancel a spring-back so the finger isn't fighting the settle loop.
+                if !isSettling, settleTask != nil {
+                    settleTask?.cancel()
+                    settleTask = nil
+                }
                 guard !isSettling else { return }
                 if dragOffset == 0 {
                     onUserDrag?()
@@ -439,25 +444,31 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
                 let threshold = slotExtent / 4
                 let decisive = abs(predicted) > abs(translation) ? predicted : translation
 
-                if decisive > threshold {
-                    commitStep(direction: -1, slotExtent: slotExtent)
-                } else if decisive < -threshold {
-                    commitStep(direction: +1, slotExtent: slotExtent)
+                if abs(decisive) > threshold {
+                    // Keep multi-slot drags / flicks — don't settle back to a single page.
+                    let steps = max(1, Int((abs(decisive) / slotExtent).rounded()))
+                    let direction = decisive > 0 ? -1 : +1
+                    commitStep(direction: direction, slotExtent: slotExtent, steps: steps)
                 } else {
-                    animateDragOffset(to: 0, duration: 0.35)
+                    // Snappy ease-out; matches the old spring's feel better than a full ease-in-out.
+                    animateDragOffset(to: 0, duration: 0.28)
                 }
             }
     }
 
     /// `direction` +1 = next, −1 = previous.
     /// Used by both manual commit and auto-scroll ticks.
-    private func commitStep(direction: Int, slotExtent: CGFloat) {
+    private func commitStep(direction: Int, slotExtent: CGFloat, steps: Int = 1) {
         guard itemCount > 0, !isSettling else { return }
+        let pageCount = max(1, steps)
         isSettling = true
-        let targetOffset = CGFloat(-direction) * slotExtent
+        let targetOffset = CGFloat(-direction) * slotExtent * CGFloat(pageCount)
+        // Spring response was 0.55, but most travel finishes earlier — keep wall-clock short
+        // and scale only slightly for multi-page flicks.
+        let duration = min(0.42, 0.26 + 0.06 * Double(pageCount))
 
-        animateDragOffset(to: targetOffset, duration: 0.55) {
-            internalIndex += direction
+        animateDragOffset(to: targetOffset, duration: duration) {
+            internalIndex += direction * pageCount
             dragOffset = 0
             currentIndex = realIndex(for: internalIndex)
             isSettling = false
@@ -485,8 +496,8 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
             while !Task.isCancelled {
                 let elapsed = Date().timeIntervalSince(startTime)
                 let t = min(1, elapsed / duration)
-                // Smooth ease-in-out — close to the old spring without skipping frames.
-                let eased = t * t * (3 - 2 * t)
+                // Ease-out cubic — fast start like a damped spring, no slow ease-in.
+                let eased = 1 - pow(1 - t, 3)
                 dragOffset = start + delta * CGFloat(eased)
                 if t >= 1 { break }
                 try? await Task.sleep(nanoseconds: 16_000_000)
