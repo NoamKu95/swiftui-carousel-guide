@@ -16,6 +16,7 @@ import SwiftUI
 /// - **3 items:** classic `2π/3` ring.
 /// - **4+ items:** depth still comes from the circle; orbit uses slot spacing so
 ///   the far card sits in its own lane instead of under a ±1 neighbor.
+/// - **Opacity:** focus = opaque, ±1 = semi, ±2 = faint; anything farther is hidden.
 struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
 
     // MARK: - Sizing helpers (forwarded for call-site convenience)
@@ -168,14 +169,16 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
     ) -> some View {
         let step = stepAngle
         let radius = ringRadius(spacing: interCardSpacing)
-        let visibleWindow = CGFloat(max(itemCount, 1)) / 2 + 0.05
+        // Front + one level back + second level. Farther slots stay unmounted.
+        let visibleWindow: CGFloat = 2.45
 
         ZStack {
             // Identity by *offset* so duplicate `Item.id` values (easy when
             // prototyping) cannot collapse multiple cards into one view.
             ForEach(Array(items.enumerated()), id: \.offset) { itemIndex, item in
                 let wrapped = wrappedDelta(itemIndex: itemIndex, progress: progress)
-                if abs(wrapped) < visibleWindow {
+                let opacity = cardOpacity(forWrappedDelta: wrapped)
+                if abs(wrapped) < visibleWindow, opacity > 0.01 {
                     cardLayer(
                         item: item,
                         itemIndex: itemIndex,
@@ -185,7 +188,8 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
                         radius: radius,
                         spacing: interCardSpacing,
                         cardMain: cardMain,
-                        cardCross: cardCross
+                        cardCross: cardCross,
+                        opacity: opacity
                     )
                 }
             }
@@ -230,7 +234,8 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
         radius: CGFloat,
         spacing: CGFloat,
         cardMain: CGFloat,
-        cardCross: CGFloat
+        cardCross: CGFloat,
+        opacity: Double
     ) -> some View {
         let placement = orbitPlacement(
             itemIndex: itemIndex,
@@ -252,10 +257,11 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
             )
             .compositingGroup()
             .shadow(
-                color: .black.opacity(isFront ? 0.35 : max(0.08, 0.22 * Double((depth + 1) * 0.5))),
+                color: .black.opacity((isFront ? 0.35 : max(0.08, 0.22 * Double((depth + 1) * 0.5))) * opacity),
                 radius: isFront ? 18 : 8,
                 y: isFront ? 10 : 4
             )
+            .opacity(opacity)
             .scaleEffect(scale)
             .offset(
                 x: axis == .horizontal ? orbit : 0,
@@ -263,6 +269,28 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
             )
             .zIndex(Double(depth))
             .allowsHitTesting(isFront && !isSettling)
+    }
+
+    /// Opacity by slot distance from the focused card:
+    /// front = 1, ±1 = semi, ±2 = faint, farther = hidden.
+    private func cardOpacity(forWrappedDelta delta: CGFloat) -> Double {
+        let d = abs(Double(delta))
+        let stops: [(Double, Double)] = [
+            (0.0, 1.00),
+            (1.0, 0.58),
+            (2.0, 0.26),
+            (2.45, 0.00)
+        ]
+        if d <= stops[0].0 { return stops[0].1 }
+        for index in 0..<(stops.count - 1) {
+            let (d0, o0) = stops[index]
+            let (d1, o1) = stops[index + 1]
+            if d <= d1 {
+                let t = (d - d0) / (d1 - d0)
+                return o0 + (o1 - o0) * t
+            }
+        }
+        return 0
     }
 
     // MARK: - Ring placement
