@@ -93,28 +93,35 @@ enum SampleData {
             title: "Onyx",
             subtitle: "Matte black with subtle grain",
             symbolName: "creditcard.fill",
-            gradientColors: [.primary, .secondary]
+            gradientColors: [.blue, .blue]
         ),
         CarouselItem(
             id: "card-sand",
             title: "Sand",
             subtitle: "Warm neutral for everyday spend",
             symbolName: "creditcard.fill",
-            gradientColors: [.secondary, .primary]
+            gradientColors: [.pink, .pink]
         ),
         CarouselItem(
             id: "card-slate",
             title: "Slate",
             subtitle: "Cool tone with sharp contrast",
             symbolName: "creditcard.fill",
-            gradientColors: [.primary, .primary, .secondary]
+            gradientColors: [.purple, .purple]
         ),
         CarouselItem(
-            id: "card-jade",
-            title: "Jade",
-            subtitle: "Soft green for everyday balance",
+            id: "card-slate2",
+            title: "Card 4",
+            subtitle: "Card 4",
             symbolName: "creditcard.fill",
-            gradientColors: [.secondary.opacity(0.85), .primary.opacity(0.7)]
+            gradientColors: [.yellow, .yellow]
+        ),
+        CarouselItem(
+            id: "card-slate3",
+            title: "Card 5",
+            subtitle: "Card 5",
+            symbolName: "creditcard.fill",
+            gradientColors: [.green, .green]
         )
     ]
 }
