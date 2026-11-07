@@ -10,9 +10,9 @@ import SwiftUI
 /// step the virtual index remaps so the loop never ends.
 ///
 /// Count notes:
-/// - **2 items:** one step maps to `4π/3` (not `π`) so a swipe arcs through the
-///   back instead of resting on the ±180° singularity (which caused top↔bottom
-///   teleports and a “dip then rise” peek).
+/// - **2 items:** true `π` step (period-safe so a card returns to front every two
+///   advances) plus a rest peek bias — `4π/3` broke the cycle and parked both
+///   cards as peeks after two swipes.
 /// - **3 items:** classic `2π/3` ring.
 /// - **4+ items:** depth still comes from the circle; orbit uses slot spacing so
 ///   the far card sits in its own lane instead of under a ±1 neighbor.
@@ -89,6 +89,10 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
     @State private var dragOffset: CGFloat = 0
     @State private var lastAutoTick: UInt64 = 0
     @State private var isSettling = false
+    /// Where the idle back card peeks for a 2-item ring (`+1` bottom / trailing,
+    /// `-1` top / leading). Updated on each committed step so rest never sits on
+    /// the ±π singularity with zero orbit.
+    @State private var twoItemPeekSign: CGFloat = 1
 
     private var itemCount: Int { items.count }
 
@@ -96,14 +100,11 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
         spacingRatio ?? StackCarouselMetrics.spacingRatio(for: axis, itemCount: itemCount)
     }
 
-    /// Angular step around the ring.
-    /// Two items use a longer step so travel passes through the back (depth -1)
-    /// and rests at a 3-up-style peek — never on the ±π singularity.
+    /// Angular step around the ring. Must satisfy `count * step = 2π·k` so the
+    /// focused card returns after a full cycle (`π` for two items — not `4π/3`,
+    /// which left both cards as peeks after two advances).
     private var stepAngle: CGFloat {
         guard itemCount > 0 else { return 0 }
-        if itemCount == 2 {
-            return 4 * .pi / 3
-        }
         return 2 * .pi / CGFloat(itemCount)
     }
 
@@ -248,7 +249,8 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
         let depth = placement.depth
         let orbit = placement.orbit
         let scale = 0.70 + 0.30 * ((depth + 1) * 0.5)
-        let isFront = depth > 0.85
+        // Prefer slot distance over depth — two-item mid-swipe has depth ≈ 0 for both.
+        let isFront = abs(wrappedDelta) < 0.5
 
         cardBuilder(item)
             .frame(
@@ -322,6 +324,17 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
             return (wrappedDelta * spacing, depth)
         }
 
+        // 2 items: `sin(±π) = 0` parks the back card under the focus. Blend in a
+        // peek along `twoItemPeekSign` while near the back; mid-swipe uses the
+        // natural ±90° orbit so the circle swap still reads.
+        if itemCount == 2 {
+            let natural = sin(angle) * spacing
+            let opposite = max(0 as CGFloat, -depth) // 0 at front/sides … 1 at back
+            let t = opposite * opposite // ease in only near true back
+            let orbit = natural * (1 - t) + twoItemPeekSign * spacing * t
+            return (orbit, depth)
+        }
+
         return (sin(angle) * radius, depth)
     }
 
@@ -387,6 +400,11 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
         guard itemCount > 0, !isSettling else { return }
         isSettling = true
         let targetOffset = CGFloat(-direction) * slotExtent
+
+        // +1 advances through the top/leading half → rest peek there; −1 the opposite.
+        if itemCount == 2 {
+            twoItemPeekSign = direction > 0 ? -1 : 1
+        }
 
         withAnimation(.spring(response: 0.55, dampingFraction: 0.86)) {
             dragOffset = targetOffset
