@@ -271,13 +271,13 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
         let depth = cos(angle)
         var orbit = sin(angle) * radius
 
-        // depth -1 → full peek, depth 0 → none. Keeps resting opposites readable
-        // without inflating the ±90° mid-swipe separation.
-        let backness = max(0 as CGFloat, -depth)
-        if backness > 0.05 {
+        // Only cards nearly opposite the focus (depth → -1, e.g. 2-item rest /
+        // 4-item rear). Neighbors on a 3-ring sit at depth -0.5 and must keep
+        // their natural orbit.
+        let opposite = max(0 as CGFloat, -depth - 0.75) / 0.25
+        if opposite > 0 {
             let side: CGFloat = delta >= 0 ? 1 : -1
-            let t = max(0, (backness - 0.05) / 0.95)
-            orbit += side * spacing * StackCarouselMetrics.backPeekRatio * t
+            orbit += side * spacing * StackCarouselMetrics.backPeekRatio * min(opposite, 1)
         }
         return (orbit, depth)
     }
