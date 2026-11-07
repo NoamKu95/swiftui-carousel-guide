@@ -10,9 +10,9 @@ import SwiftUI
 /// step the virtual index remaps so the loop never ends.
 ///
 /// Count notes:
-/// - **2 items:** dedicated **two-slot** engine — center + leading peek only
-///   (top when vertical, leading when horizontal). Both swipe directions share
-///   those two spots; mid-travel dips behind so the peek becomes center “from under”.
+/// - **2 items:** dedicated engine — rest spots are only **center + leading peek**
+///   (top / leading), but the swap travels a real circular arc (through behind)
+///   so both swipe directions feel like one wheel, not a crossfade.
 /// - **3 items:** classic `2π/3` ring.
 /// - **4+ items:** depth from the circle; orbit uses slot spacing so the far card
 ///   sits in its own lane instead of under a ±1 neighbor.
@@ -325,9 +325,13 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
         return (sin(angle) * radius, depth)
     }
 
-    /// Center ↔ leading-peek only. `t = 0` is front, `t = 1` is the top/leading
-    /// rest spot. Mid-travel pulls orbit to 0 and depth to −1 so the swap passes
-    /// *under* the focus — same two spots for both swipe directions.
+    /// Two rest spots (center + leading peek at `4π/3`), circular travel between them.
+    ///
+    /// One shared wheel direction for both swipes:
+    /// - outbound (`phase` 0 → −1): front takes the **long** arc through trailing
+    ///   + behind and lands on the leading peek;
+    /// - inbound (`phase` +1 → 0): the peek continues forward onto the front.
+    /// Rest is always center + leading — never a separate “bottom rest” set.
     private func twoSlotPlacement(
         itemIndex: Int,
         progress: CGFloat,
@@ -341,18 +345,19 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
             phase += 2
         }
 
-        let t = min(max(abs(phase), 0), 1)
-        let peekAngle = 2 * CGFloat.pi / 3
-        let angle = -t * peekAngle // always toward top / leading
-        let radius = spacing / sin(peekAngle)
-        let baseOrbit = sin(angle) * radius
-        let baseDepth = cos(angle)
+        let longArc = 4 * CGFloat.pi / 3 // front → leading peek via behind
+        let shortArc = 2 * CGFloat.pi / 3 // leading peek → front (continue forward)
+        let angle: CGFloat
+        if phase <= 0 {
+            // 0 → longArc as phase 0 → −1
+            angle = (-phase) * longArc
+        } else {
+            // longArc → 2π (≡ 0) as phase 1 → 0
+            angle = longArc + (1 - phase) * shortArc
+        }
 
-        // Dip behind at mid-swipe (under the center card).
-        let under = sin(t * .pi) // 0 at ends, 1 at mid
-        let orbit = baseOrbit * (1 - under)
-        let depth = baseDepth * (1 - under) + (-1) * under
-        return (orbit, depth)
+        let radius = spacing / sin(2 * CGFloat.pi / 3)
+        return (sin(angle) * radius, cos(angle))
     }
 
     // MARK: - Index math
