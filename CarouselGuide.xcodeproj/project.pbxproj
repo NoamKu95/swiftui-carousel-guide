@@ -12,7 +12,6 @@
 		B1D6A5EA51434AA694545E64 /* CarouselItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1D6A5EA51434AA694545E64 /* CarouselItem.swift */; };
 		B2BCEB30C66042F5B36C5472 /* DemoMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92BCEB30C66042F5B36C5472 /* DemoMenuView.swift */; };
 		B2F8C1D04B7E4E1A9C3D5E60 /* InfinitePagingScrollView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2F8C1D04B7E4E1A9C3D5E60 /* InfinitePagingScrollView.swift */; };
-		B9C0D1E2F3A445566778899A /* StackedInfiniteCarouselView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C0D1E2F3A445566778899A /* StackedInfiniteCarouselView.swift */; };
 		B34B81CFBAE149E38410D049 /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 834B81CFBAE149E38410D049 /* SampleData.swift */; };
 		B4D4B2341A78401E959EB3A1 /* DemoKind.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4D4B2341A78401E959EB3A1 /* DemoKind.swift */; };
 		B684DC4E6F184347882CB4BC /* CarouselView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E684DC4E6F184347882CB4BC /* CarouselView.swift */; };
@@ -20,12 +19,13 @@
 		B6CE78D918304028918E6CA7 /* AutoScrollController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6CE78D918304028918E6CA7 /* AutoScrollController.swift */; };
 		B74F7217F8DC4F8BB28AF513 /* CarouselDemoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 774F7217F8DC4F8BB28AF513 /* CarouselDemoView.swift */; };
 		B7C961A99F22400681C710AF /* PageIndicatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37C961A99F22400681C710AF /* PageIndicatorView.swift */; };
+		B9C0D1E2F3A445566778899A /* StackedInfiniteCarouselView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C0D1E2F3A445566778899A /* StackedInfiniteCarouselView.swift */; };
 		BAA7C4C29DF540DB95A9CAFC /* CarouselConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AA7C4C29DF540DB95A9CAFC /* CarouselConfiguration.swift */; };
 		BAXIS0000000000000000001 /* CarouselAxis.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAXIS0000000000000000001 /* CarouselAxis.swift */; };
+		BDEMOROW0000000000000001 /* DemoRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDEMOROW0000000000000001 /* DemoRowView.swift */; };
 		BFINIT000000000000000001 /* FiniteCarouselLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFINIT000000000000000001 /* FiniteCarouselLayout.swift */; };
 		BINFCTL00000000000000001 /* InfinitePagingController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FINFCTL00000000000000001 /* InfinitePagingController.swift */; };
 		BSTACKM00000000000000001 /* StackCarouselMetrics.swift in Sources */ = {isa = PBXBuildFile; fileRef = FSTACKM00000000000000001 /* StackCarouselMetrics.swift */; };
-		BDEMOROW0000000000000001 /* DemoRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDEMOROW0000000000000001 /* DemoRowView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,8 +36,8 @@
 		834B81CFBAE149E38410D049 /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
 		92BCEB30C66042F5B36C5472 /* DemoMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoMenuView.swift; sourceTree = "<group>"; };
 		A2F8C1D04B7E4E1A9C3D5E60 /* InfinitePagingScrollView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfinitePagingScrollView.swift; sourceTree = "<group>"; };
-		A9C0D1E2F3A445566778899A /* StackedInfiniteCarouselView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackedInfiniteCarouselView.swift; sourceTree = "<group>"; };
 		A6CE3F5AD8924BD6B2E17D2C /* SampleCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleCardView.swift; sourceTree = "<group>"; };
+		A9C0D1E2F3A445566778899A /* StackedInfiniteCarouselView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackedInfiniteCarouselView.swift; sourceTree = "<group>"; };
 		C5AC5A3EED3A43A8BDAF4AEF /* CarouselGuide.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CarouselGuide.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D1D6A5EA51434AA694545E64 /* CarouselItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarouselItem.swift; sourceTree = "<group>"; };
 		D4D4B2341A78401E959EB3A1 /* DemoKind.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoKind.swift; sourceTree = "<group>"; };
@@ -45,10 +45,10 @@
 		E684DC4E6F184347882CB4BC /* CarouselView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarouselView.swift; sourceTree = "<group>"; };
 		E6CE78D918304028918E6CA7 /* AutoScrollController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoScrollController.swift; sourceTree = "<group>"; };
 		FAXIS0000000000000000001 /* CarouselAxis.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarouselAxis.swift; sourceTree = "<group>"; };
+		FDEMOROW0000000000000001 /* DemoRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoRowView.swift; sourceTree = "<group>"; };
 		FFINIT000000000000000001 /* FiniteCarouselLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FiniteCarouselLayout.swift; sourceTree = "<group>"; };
 		FINFCTL00000000000000001 /* InfinitePagingController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfinitePagingController.swift; sourceTree = "<group>"; };
 		FSTACKM00000000000000001 /* StackCarouselMetrics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackCarouselMetrics.swift; sourceTree = "<group>"; };
-		FDEMOROW0000000000000001 /* DemoRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoRowView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -81,6 +81,22 @@
 			path = CarouselGuide;
 			sourceTree = "<group>";
 		};
+		A10000000000000000000004 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				0E7F0B89F49645CDAC81F21A /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		A5C40C0D409445AEA55595C2 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C5AC5A3EED3A43A8BDAF4AEF /* CarouselGuide.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
 		GAPP00000000000000000001 /* App */ = {
 			isa = PBXGroup;
 			children = (
@@ -104,6 +120,44 @@
 			path = Carousel;
 			sourceTree = "<group>";
 		};
+		GDEMO0000000000000000001 /* Demo */ = {
+			isa = PBXGroup;
+			children = (
+				GDEMOMODELS0000000000001 /* Models */,
+				GDEMOCOMP000000000000001 /* Components */,
+				GDEMOSCR0000000000000001 /* Screens */,
+			);
+			path = Demo;
+			sourceTree = "<group>";
+		};
+		GDEMOCOMP000000000000001 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				A6CE3F5AD8924BD6B2E17D2C /* SampleCardView.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		GDEMOMODELS0000000000001 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				D1D6A5EA51434AA694545E64 /* CarouselItem.swift */,
+				834B81CFBAE149E38410D049 /* SampleData.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		GDEMOSCR0000000000000001 /* Screens */ = {
+			isa = PBXGroup;
+			children = (
+				D4D4B2341A78401E959EB3A1 /* DemoKind.swift */,
+				92BCEB30C66042F5B36C5472 /* DemoMenuView.swift */,
+				FDEMOROW0000000000000001 /* DemoRowView.swift */,
+				774F7217F8DC4F8BB28AF513 /* CarouselDemoView.swift */,
+			);
+			path = Screens;
+			sourceTree = "<group>";
+		};
 		GINF00000000000000000001 /* Infinite */ = {
 			isa = PBXGroup;
 			children = (
@@ -120,60 +174,6 @@
 				A9C0D1E2F3A445566778899A /* StackedInfiniteCarouselView.swift */,
 			);
 			path = Stack;
-			sourceTree = "<group>";
-		};
-		GDEMO0000000000000000001 /* Demo */ = {
-			isa = PBXGroup;
-			children = (
-				GDEMOMODELS0000000000001 /* Models */,
-				GDEMOCOMP000000000000001 /* Components */,
-				GDEMOSCR0000000000000001 /* Screens */,
-			);
-			path = Demo;
-			sourceTree = "<group>";
-		};
-		GDEMOMODELS0000000000001 /* Models */ = {
-			isa = PBXGroup;
-			children = (
-				D1D6A5EA51434AA694545E64 /* CarouselItem.swift */,
-				834B81CFBAE149E38410D049 /* SampleData.swift */,
-			);
-			path = Models;
-			sourceTree = "<group>";
-		};
-		GDEMOCOMP000000000000001 /* Components */ = {
-			isa = PBXGroup;
-			children = (
-				A6CE3F5AD8924BD6B2E17D2C /* SampleCardView.swift */,
-			);
-			path = Components;
-			sourceTree = "<group>";
-		};
-		GDEMOSCR0000000000000001 /* Screens */ = {
-			isa = PBXGroup;
-			children = (
-				D4D4B2341A78401E959EB3A1 /* DemoKind.swift */,
-				92BCEB30C66042F5B36C5472 /* DemoMenuView.swift */,
-				FDEMOROW0000000000000001 /* DemoRowView.swift */,
-				774F7217F8DC4F8BB28AF513 /* CarouselDemoView.swift */,
-			);
-			path = Screens;
-			sourceTree = "<group>";
-		};
-		A10000000000000000000004 /* Resources */ = {
-			isa = PBXGroup;
-			children = (
-				0E7F0B89F49645CDAC81F21A /* Assets.xcassets */,
-			);
-			path = Resources;
-			sourceTree = "<group>";
-		};
-		A5C40C0D409445AEA55595C2 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				C5AC5A3EED3A43A8BDAF4AEF /* CarouselGuide.app */,
-			);
-			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -371,7 +371,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 346FGQ8ZC8;
+				DEVELOPMENT_TEAM = JRM4QXKW37;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Carousel Guide";

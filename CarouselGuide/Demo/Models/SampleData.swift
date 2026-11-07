@@ -107,6 +107,20 @@ enum SampleData {
             subtitle: "Cool tone with sharp contrast",
             symbolName: "creditcard.fill",
             gradientColors: [.primary, .primary, .secondary]
+        ),
+        CarouselItem(
+            id: "card-slate",
+            title: "Card 4",
+            subtitle: "Card 4",
+            symbolName: "creditcard.fill",
+            gradientColors: [.primary, .primary, .secondary]
+        ),
+        CarouselItem(
+            id: "card-slate",
+            title: "Card 5",
+            subtitle: "Card 5",
+            symbolName: "creditcard.fill",
+            gradientColors: [.primary, .primary, .secondary]
         )
     ]
 }
