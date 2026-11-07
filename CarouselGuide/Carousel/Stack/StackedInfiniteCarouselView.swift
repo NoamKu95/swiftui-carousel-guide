@@ -9,12 +9,13 @@ import SwiftUI
 /// `progress` is continuous (`internalIndex − dragFraction`). After a committed
 /// step the virtual index remaps so the loop never ends.
 ///
-/// Works for any item count ≥ 1:
-/// - **2 items:** a true 180° ring hides the back card; we use a 3-slot step so
-///   the inactive card peeks at ±120°.
+/// Count notes:
+/// - **2 items:** true `π` step so a step passes through ±90° (circle swap). A
+///   back-peek bias keeps the resting opposite card visible; mid-orbit is
+///   tightened so the farthest separation stays modest.
 /// - **3 items:** classic center + two peeks.
-/// - **4+ items:** equal `2π/n` spacing; the card parked at the far back is
-///   culled so rest still reads as a 3-up stack.
+/// - **4+ items:** equal `2π/n` spacing; the far-back card gets the same peek
+///   bias so it stays rendered instead of vanishing behind the focus.
 struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
 
     // MARK: - Sizing helpers (forwarded for call-site convenience)
@@ -94,11 +95,10 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
         spacingRatio ?? StackCarouselMetrics.spacingRatio(for: axis, itemCount: itemCount)
     }
 
-    /// Angular step around the ring. Two items are opposite on a true circle
-    /// (`π`) so the back card has zero orbit — use a 3-slot step so it peeks.
+    /// True ring step — required so a 2-item advance passes through ±90°.
     private var stepAngle: CGFloat {
         guard itemCount > 0 else { return 0 }
-        return 2 * .pi / CGFloat(max(itemCount, 3))
+        return 2 * .pi / CGFloat(itemCount)
     }
 
     init(
@@ -148,8 +148,7 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
                 cardMain: cardMain,
                 cardCross: cardCross,
                 interCardSpacing: interCardSpacing,
-                progress: progress,
-                dragFraction: dragFraction
+                progress: progress
             )
         }
     }
@@ -160,37 +159,23 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
         cardMain: CGFloat,
         cardCross: CGFloat,
         interCardSpacing: CGFloat,
-        progress: CGFloat,
-        dragFraction: CGFloat
+        progress: CGFloat
     ) -> some View {
-        let count = itemCount
         let step = stepAngle
-        let radius: CGFloat = {
-            let s = sin(step)
-            return abs(s) > 0.001 ? interCardSpacing / s : interCardSpacing
-        }()
-        // At rest keep a 3-up window (±1). While traveling, keep ±2 so a card
-        // can arc behind without popping out of existence mid-swipe.
-        let traveling = abs(dragFraction) > 0.02 || isSettling
-        let visibleWindow: CGFloat = {
-            let rest: CGFloat = 1.55
-            let travel = min(2.55, CGFloat(max(count, 1)) / 2 + 0.05)
-            return traveling ? max(rest, travel) : rest
-        }()
+        let radius = ringRadius(spacing: interCardSpacing)
+        // Show every slot on the ring (including the far back for even counts).
+        let visibleWindow = CGFloat(max(itemCount, 1)) / 2 + 0.05
 
         ZStack {
             ForEach(Array(items.enumerated()), id: \.element.id) { itemIndex, item in
                 let delta = ringDelta(itemIndex: itemIndex, progress: progress)
-                let angle = delta * step
-                let depth = cos(angle)
-                // Skip the card parked directly behind the focus (even rings),
-                // and anything outside the visible slot window.
-                if abs(delta) < visibleWindow, depth > -0.88 {
+                if abs(delta) < visibleWindow {
                     cardLayer(
                         item: item,
                         delta: delta,
                         stepAngle: step,
                         radius: radius,
+                        spacing: interCardSpacing,
                         cardMain: cardMain,
                         cardCross: cardCross
                     )
@@ -233,12 +218,13 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
         delta: CGFloat,
         stepAngle: CGFloat,
         radius: CGFloat,
+        spacing: CGFloat,
         cardMain: CGFloat,
         cardCross: CGFloat
     ) -> some View {
-        let angle = delta * stepAngle
-        let depth = cos(angle)
-        let orbit = sin(angle) * radius
+        let placement = orbitPlacement(delta: delta, stepAngle: stepAngle, radius: radius, spacing: spacing)
+        let depth = placement.depth
+        let orbit = placement.orbit
         let scale = 0.70 + 0.30 * ((depth + 1) * 0.5)
         let isFront = depth > 0.85
 
@@ -260,6 +246,40 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
             )
             .zIndex(Double(depth))
             .allowsHitTesting(isFront && !isSettling)
+    }
+
+    // MARK: - Ring placement
+
+    /// Radius such that a 1-slot neighbor’s `sin(step)·radius ≈ spacing`.
+    /// For 2 items `sin(π) = 0`, so we use a reduced mid-orbit instead.
+    private func ringRadius(spacing: CGFloat) -> CGFloat {
+        let s = sin(stepAngle)
+        if abs(s) > 0.001 {
+            return spacing / s
+        }
+        return spacing * StackCarouselMetrics.twoItemMidOrbitFactor
+    }
+
+    /// Circle orbit + depth, with a back-peek bias so opposite cards stay visible.
+    private func orbitPlacement(
+        delta: CGFloat,
+        stepAngle: CGFloat,
+        radius: CGFloat,
+        spacing: CGFloat
+    ) -> (orbit: CGFloat, depth: CGFloat) {
+        let angle = delta * stepAngle
+        let depth = cos(angle)
+        var orbit = sin(angle) * radius
+
+        // depth -1 → full peek, depth 0 → none. Keeps resting opposites readable
+        // without inflating the ±90° mid-swipe separation.
+        let backness = max(0 as CGFloat, -depth)
+        if backness > 0.05 {
+            let side: CGFloat = delta >= 0 ? 1 : -1
+            let t = max(0, (backness - 0.05) / 0.95)
+            orbit += side * spacing * StackCarouselMetrics.backPeekRatio * t
+        }
+        return (orbit, depth)
     }
 
     // MARK: - Index math
@@ -327,11 +347,12 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
         isSettling = true
         let targetOffset = CGFloat(-direction) * slotExtent
 
-        withAnimation(.spring(response: 0.48, dampingFraction: 0.88)) {
+        // Slightly longer ease so the ±90° midpoint of a 2-item circle reads.
+        withAnimation(.spring(response: 0.55, dampingFraction: 0.86)) {
             dragOffset = targetOffset
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.50) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.58) {
             internalIndex += direction
             dragOffset = 0
             currentIndex = realIndex(for: internalIndex)

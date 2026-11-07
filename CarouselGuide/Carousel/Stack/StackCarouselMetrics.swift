@@ -15,14 +15,18 @@ enum StackCarouselMetrics {
     /// Focused horizontal card width as a fraction of the stage.
     static let horizontalFocusWidthRatio: CGFloat = 0.88
 
+    /// When two items sit at ±90° mid-swipe, orbit = spacing × this (keeps the
+    /// farthest separation tighter than a full rest peek).
+    static let twoItemMidOrbitFactor: CGFloat = 0.42
+    /// Extra orbit pushed onto a card parked near the back (`depth → -1`) so it
+    /// peeks instead of vanishing behind the focus (2-item rest, 4-item rear).
+    static let backPeekRatio: CGFloat = 1.0
+
     static func spacingRatio(for axis: CarouselAxis, itemCount: Int = 3) -> CGFloat {
         let base = axis == .horizontal ? spacingRatioHorizontal : spacingRatioVertical
-        // Two items sit 180° apart on a true circle (no peek). The view uses a
-        // 3-slot step angle instead; a slightly larger gap makes that single
-        // neighbor read clearly.
-        if itemCount == 2 { return base * 1.25 }
-        // Four+ rings place ±1 neighbors nearer the equator (larger face). A
-        // touch more gap keeps peeks from reading as a single overlapping slab.
+        // Rest peek for the card opposite the focus (2-item / even rings).
+        if itemCount == 2 { return base * 1.15 }
+        // Four+ rings place ±1 neighbors nearer the equator (larger face).
         if itemCount >= 4 { return base * 1.1 }
         return base
     }
@@ -47,8 +51,15 @@ enum StackCarouselMetrics {
         let ratio = spacingRatio ?? self.spacingRatio(for: axis, itemCount: itemCount)
         let cardMain = cardMainLength(forCardCrossAxis: crossAxis, aspectRatio: aspectRatio, axis: axis)
         let spacing = cardMain * ratio
+        // Two-item mid-swipe puts cards on opposite sides — size for that span.
+        let orbitSpan: CGFloat = {
+            if itemCount == 2 {
+                return 2 * spacing * twoItemMidOrbitFactor
+            }
+            return 2 * spacing
+        }()
         let slack = cardMain * extentSlackRatio
-        return 2 * spacing + cardMain * neighborScaleAtOne + slack
+        return orbitSpan + cardMain * neighborScaleAtOne + slack
     }
 
     /// Inverse of `stackExtent` — card cross size that makes the stack fit in `extent`.
@@ -61,7 +72,8 @@ enum StackCarouselMetrics {
     ) -> CGFloat {
         let ratio = spacingRatio ?? self.spacingRatio(for: axis, itemCount: itemCount)
         let mainPerCross = axis == .vertical ? (1 / aspectRatio) : aspectRatio
-        let multiplier = 2 * ratio + neighborScaleAtOne + extentSlackRatio
+        let orbitMul: CGFloat = itemCount == 2 ? (2 * twoItemMidOrbitFactor) : 2
+        let multiplier = orbitMul * ratio + neighborScaleAtOne + extentSlackRatio
         return extent / (mainPerCross * multiplier)
     }
 }
