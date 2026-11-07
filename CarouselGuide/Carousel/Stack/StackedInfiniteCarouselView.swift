@@ -11,8 +11,8 @@ import SwiftUI
 ///
 /// Count notes:
 /// - **2 items:** dedicated engine — rest spots are only **center + leading peek**
-///   (top / leading), but the swap travels a real circular arc (through behind)
-///   so both swipe directions feel like one wheel, not a crossfade.
+///   (top / leading). Front moves with the swipe onto the peek; the peek takes the
+///   long arc through behind onto center so the swap still reads as a wheel.
 /// - **3 items:** classic `2π/3` ring.
 /// - **4+ items:** depth from the circle; orbit uses slot spacing so the far card
 ///   sits in its own lane instead of under a ±1 neighbor.
@@ -325,13 +325,14 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
         return (sin(angle) * radius, depth)
     }
 
-    /// Two rest spots (center + leading peek at `4π/3`), circular travel between them.
+    /// Two rest spots (center + leading peek), circular travel between them.
     ///
-    /// One shared wheel direction for both swipes:
-    /// - outbound (`phase` 0 → −1): front takes the **long** arc through trailing
-    ///   + behind and lands on the leading peek;
-    /// - inbound (`phase` +1 → 0): the peek continues forward onto the front.
-    /// Rest is always center + leading — never a separate “bottom rest” set.
+    /// Swipe-matched wheel (progress+ / drag toward leading):
+    /// - outbound (`phase` 0 → −1): front takes the **short** arc onto the leading
+    ///   peek (moves with the finger);
+    /// - inbound (`phase` +1 → 0): peek takes the **long** arc through behind onto
+    ///   center (arrives from under).
+    /// Rest is always center + leading — reverse swipe just runs the same wheel backward.
     private func twoSlotPlacement(
         itemIndex: Int,
         progress: CGFloat,
@@ -345,18 +346,20 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
             phase += 2
         }
 
-        let longArc = 4 * CGFloat.pi / 3 // front → leading peek via behind
-        let shortArc = 2 * CGFloat.pi / 3 // leading peek → front (continue forward)
+        let peek = 2 * CGFloat.pi / 3 // leading rest angle magnitude (top / leading)
+        let longArc = 2 * CGFloat.pi - peek // via behind
         let angle: CGFloat
         if phase <= 0 {
-            // 0 → longArc as phase 0 → −1
-            angle = (-phase) * longArc
+            // 0 → −peek as phase 0 → −1 (with the swipe toward leading)
+            angle = phase * peek
         } else {
-            // longArc → 2π (≡ 0) as phase 1 → 0
-            angle = longArc + (1 - phase) * shortArc
+            // −peek → −2π (≡ 0) as phase 1 → 0 (long way through behind)
+            angle = -peek - (1 - phase) * longArc
         }
 
-        let radius = spacing / sin(2 * CGFloat.pi / 3)
+        // Vertical reads large with credit-card height — keep that ring a bit tighter.
+        let radiusScale: CGFloat = axis == .vertical ? 0.78 : 1
+        let radius = (spacing / sin(peek)) * radiusScale
         return (sin(angle) * radius, cos(angle))
     }
 

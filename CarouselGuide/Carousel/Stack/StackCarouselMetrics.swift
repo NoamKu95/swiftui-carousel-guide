@@ -28,7 +28,10 @@ enum StackCarouselMetrics {
     static func spacingRatio(for axis: CarouselAxis, itemCount: Int = 3) -> CGFloat {
         let base = axis == .horizontal ? spacingRatioHorizontal : spacingRatioVertical
         if itemCount <= 1 { return base }
-        if itemCount == 2 { return base * 1.15 }
+        // Two-slot ring: slightly tighter on vertical so the arc doesn’t dominate.
+        if itemCount == 2 {
+            return axis == .vertical ? base * 0.9 : base
+        }
 
         // Vertical: pack tighter as count grows so ±1 / ±2 peeks don’t stretch
         // the stage into a tall strip. 3-up keeps the calibrated base look.
