@@ -18,8 +18,10 @@ enum StackCarouselMetrics {
     static let maxVisibleSlot: Int = 2
 
     /// How far from focus a resting card can sit for this count (capped by what we draw).
+    /// Two-item mode only uses the leading peek (one side), so outer = 1.
     static func visibleOuterSlot(itemCount: Int) -> Int {
         guard itemCount > 1 else { return 1 }
+        if itemCount == 2 { return 1 }
         return min(maxVisibleSlot, max(itemCount / 2, 1))
     }
 
