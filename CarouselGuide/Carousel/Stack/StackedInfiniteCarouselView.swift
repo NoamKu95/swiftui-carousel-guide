@@ -91,6 +91,9 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
     @State private var dragOffset: CGFloat = 0
     @State private var lastAutoTick: UInt64 = 0
     @State private var isSettling = false
+    /// Drives settle / cancel so `dragOffset` (and scrub progress) update every frame.
+    /// `withAnimation` only interpolates rendering — bindings would jump to the end.
+    @State private var settleTask: Task<Void, Never>?
 
     private var itemCount: Int { items.count }
 
@@ -441,28 +444,56 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
                 } else if decisive < -threshold {
                     commitStep(direction: +1, slotExtent: slotExtent)
                 } else {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
-                        dragOffset = 0
-                    }
+                    animateDragOffset(to: 0, duration: 0.35)
                 }
             }
     }
 
     /// `direction` +1 = next, −1 = previous.
+    /// Used by both manual commit and auto-scroll ticks.
     private func commitStep(direction: Int, slotExtent: CGFloat) {
         guard itemCount > 0, !isSettling else { return }
         isSettling = true
         let targetOffset = CGFloat(-direction) * slotExtent
 
-        withAnimation(.spring(response: 0.55, dampingFraction: 0.86)) {
-            dragOffset = targetOffset
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.58) {
+        animateDragOffset(to: targetOffset, duration: 0.55) {
             internalIndex += direction
             dragOffset = 0
             currentIndex = realIndex(for: internalIndex)
             isSettling = false
+        }
+    }
+
+    /// Steps `dragOffset` on the main actor so scrub progress tracks auto-scroll
+    /// and settle the same way it tracks a finger drag.
+    private func animateDragOffset(
+        to target: CGFloat,
+        duration: TimeInterval,
+        onComplete: @escaping () -> Void
+    ) {
+        settleTask?.cancel()
+        let start = dragOffset
+        let delta = target - start
+        guard abs(delta) > 0.5 else {
+            dragOffset = target
+            onComplete()
+            return
+        }
+
+        settleTask = Task { @MainActor in
+            let startTime = Date()
+            while !Task.isCancelled {
+                let elapsed = Date().timeIntervalSince(startTime)
+                let t = min(1, elapsed / duration)
+                // Smooth ease-in-out — close to the old spring without skipping frames.
+                let eased = t * t * (3 - 2 * t)
+                dragOffset = start + delta * CGFloat(eased)
+                if t >= 1 { break }
+                try? await Task.sleep(nanoseconds: 16_000_000)
+            }
+            guard !Task.isCancelled else { return }
+            dragOffset = target
+            onComplete()
         }
     }
 }
