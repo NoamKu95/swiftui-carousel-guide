@@ -9,11 +9,13 @@ import SwiftUI
 /// `progress` is continuous (`internalIndex − dragFraction`). After a committed
 /// step the virtual index remaps so the loop never ends.
 ///
-/// Placement uses the *raw* slot delta for `sin`/`cos` (not shortest-path wrap)
-/// so a 2-item step travels continuously through ±90° instead of jumping from
-/// top peek to bottom peek. Cards parked opposite the focus get a peek bias;
-/// on 4+ rings that bias sits *beyond* the ±1 side peeks so the rear card isn’t
-/// hidden underneath a neighbor.
+/// Count notes:
+/// - **2 items:** one step maps to `4π/3` (not `π`) so a swipe arcs through the
+///   back instead of resting on the ±180° singularity (which caused top↔bottom
+///   teleports and a “dip then rise” peek).
+/// - **3 items:** classic `2π/3` ring.
+/// - **4+ items:** depth still comes from the circle; orbit uses slot spacing so
+///   the far card sits in its own lane instead of under a ±1 neighbor.
 struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
 
     // MARK: - Sizing helpers (forwarded for call-site convenience)
@@ -93,9 +95,14 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
         spacingRatio ?? StackCarouselMetrics.spacingRatio(for: axis, itemCount: itemCount)
     }
 
-    /// True ring step (`2π/n`) so every count shares one continuous circle.
+    /// Angular step around the ring.
+    /// Two items use a longer step so travel passes through the back (depth -1)
+    /// and rests at a 3-up-style peek — never on the ±π singularity.
     private var stepAngle: CGFloat {
         guard itemCount > 0 else { return 0 }
+        if itemCount == 2 {
+            return 4 * .pi / 3
+        }
         return 2 * .pi / CGFloat(itemCount)
     }
 
@@ -161,17 +168,19 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
     ) -> some View {
         let step = stepAngle
         let radius = ringRadius(spacing: interCardSpacing)
-        // Shortest-path distance only for culling — placement uses raw deltas.
         let visibleWindow = CGFloat(max(itemCount, 1)) / 2 + 0.05
 
         ZStack {
-            ForEach(Array(items.enumerated()), id: \.element.id) { itemIndex, item in
+            // Identity by *offset* so duplicate `Item.id` values (easy when
+            // prototyping) cannot collapse multiple cards into one view.
+            ForEach(Array(items.enumerated()), id: \.offset) { itemIndex, item in
                 let wrapped = wrappedDelta(itemIndex: itemIndex, progress: progress)
                 if abs(wrapped) < visibleWindow {
                     cardLayer(
                         item: item,
                         itemIndex: itemIndex,
                         progress: progress,
+                        wrappedDelta: wrapped,
                         stepAngle: step,
                         radius: radius,
                         spacing: interCardSpacing,
@@ -216,6 +225,7 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
         item: Item,
         itemIndex: Int,
         progress: CGFloat,
+        wrappedDelta: CGFloat,
         stepAngle: CGFloat,
         radius: CGFloat,
         spacing: CGFloat,
@@ -225,6 +235,7 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
         let placement = orbitPlacement(
             itemIndex: itemIndex,
             progress: progress,
+            wrappedDelta: wrappedDelta,
             stepAngle: stepAngle,
             radius: radius,
             spacing: spacing
@@ -256,23 +267,19 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
 
     // MARK: - Ring placement
 
-    /// Radius such that a 1-slot neighbor’s `sin(step)·radius ≈ spacing`.
-    /// For 2 items `sin(π) = 0`; mid-swipe orbit is then ±spacing.
     private func ringRadius(spacing: CGFloat) -> CGFloat {
-        let s = sin(stepAngle)
-        if abs(s) > 0.001 {
+        let s = abs(sin(stepAngle))
+        if s > 0.001 {
             return spacing / s
         }
         return spacing
     }
 
-    /// Continuous circle placement from the *raw* slot delta.
-    ///
-    /// Shortest-path wrapping jumps by a full turn at ±n/2 — for 2 items that
-    /// teleports a top peek to a bottom peek. `sin`/`cos` already wrap angles.
+    /// Continuous placement from the *raw* slot delta (no shortest-path wrap).
     private func orbitPlacement(
         itemIndex: Int,
         progress: CGFloat,
+        wrappedDelta: CGFloat,
         stepAngle: CGFloat,
         radius: CGFloat,
         spacing: CGFloat
@@ -280,27 +287,14 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
         let rawDelta = CGFloat(itemIndex) - progress
         let angle = rawDelta * stepAngle
         let depth = cos(angle)
-        let sinA = sin(angle)
-        var orbit = sinA * radius
 
-        // Cards nearly opposite the focus (depth → -1) would sit under the
-        // center — and on 4+ rings, under a ±1 side peek at the same orbit.
-        let opposite = max(0 as CGFloat, -depth - 0.75) / 0.25
-        if opposite > 0 {
-            let side: CGFloat = {
-                if abs(sinA) > 0.02 { return sinA > 0 ? 1 : -1 }
-                // Exact back: keep the approach half-plane (avoids a rest flip).
-                let probe = sin(angle + (angle >= 0 ? -0.01 : 0.01))
-                return probe >= 0 ? 1 : -1
-            }()
-            var target = spacing * StackCarouselMetrics.backPeekRatio
-            if itemCount >= 4 {
-                target = spacing * (1 + StackCarouselMetrics.backPeekBeyondSideRatio)
-            }
-            let mag = abs(orbit) * (1 - min(opposite, 1)) + target * min(opposite, 1)
-            orbit = side * mag
+        // 4+: slot orbit so the far card has its own lane (circle sin would
+        // park it under a ±1 neighbor at the same |orbit|).
+        if itemCount >= 4 {
+            return (wrappedDelta * spacing, depth)
         }
-        return (orbit, depth)
+
+        return (sin(angle) * radius, depth)
     }
 
     // MARK: - Index math
@@ -310,7 +304,7 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
         return ((virtual % itemCount) + itemCount) % itemCount
     }
 
-    /// Shortest signed distance — used only for visibility culling.
+    /// Shortest signed distance — visibility culling + 4+ slot orbits.
     private func wrappedDelta(itemIndex: Int, progress: CGFloat) -> CGFloat {
         guard itemCount > 0 else { return 0 }
         let n = CGFloat(itemCount)

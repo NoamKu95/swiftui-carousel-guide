@@ -84,8 +84,9 @@ enum SampleData {
         )
     ]
 
-    /// Card-design picks for the 3-up stacked demos (exactly three items).
-    /// Gradients stay fully opaque so the focused card never reveals neighbors.
+    /// Card-design picks for the stacked demos.
+    /// IDs must be unique — `ForEach` keyed by `id` will drop duplicates.
+    /// Gradients stay fully opaque so the focused card never reveals neighbors through fill.
     static let cardDesigns: [CarouselItem] = [
         CarouselItem(
             id: "card-onyx",
@@ -109,18 +110,11 @@ enum SampleData {
             gradientColors: [.primary, .primary, .secondary]
         ),
         CarouselItem(
-            id: "card-slate",
-            title: "Card 4",
-            subtitle: "Card 4",
+            id: "card-jade",
+            title: "Jade",
+            subtitle: "Soft green for everyday balance",
             symbolName: "creditcard.fill",
-            gradientColors: [.primary, .primary, .secondary]
-        ),
-        CarouselItem(
-            id: "card-slate",
-            title: "Card 5",
-            subtitle: "Card 5",
-            symbolName: "creditcard.fill",
-            gradientColors: [.primary, .primary, .secondary]
+            gradientColors: [.secondary.opacity(0.85), .primary.opacity(0.7)]
         )
     ]
 }

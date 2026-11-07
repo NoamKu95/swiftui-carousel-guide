@@ -200,7 +200,7 @@ struct CarouselDemoView: View {
 
         return HStack(spacing: spacing) {
             StackedInfiniteCarouselView(
-                items: [kind.items[0],kind.items[1],kind.items[2],kind.items[3]],
+                items: kind.items,
                 currentIndex: $stackedIndex,
                 axis: .vertical,
                 cardAspectRatio: aspect,
