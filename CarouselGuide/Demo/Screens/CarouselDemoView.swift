@@ -12,7 +12,7 @@ struct CarouselDemoView: View {
     @State private var stackedIndex = 0
     /// Fractional page position while the 3D stack is scrubbing / settling.
     @State private var stackedProgress: CGFloat = 0
-    @State private var interval = 3.0
+    @State private var interval = 1.5
     @StateObject private var stackedAutoScroll = AutoScrollController()
 
     private var configuration: CarouselConfiguration {
