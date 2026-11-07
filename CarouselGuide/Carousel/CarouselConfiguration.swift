@@ -5,7 +5,7 @@ struct CarouselConfiguration: Equatable, Sendable {
     var axis: CarouselAxis = .horizontal
     var isInfinite: Bool = false
     var autoScrollEnabled: Bool = false
-    var autoScrollInterval: TimeInterval = 3.0
+    var autoScrollInterval: TimeInterval = 1.5
     var spacing: CGFloat = 16
     var contentInsets: EdgeInsets = EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20)
     var showsIndicators: Bool = false

@@ -8,7 +8,7 @@ struct CarouselDemoView: View {
     @State private var autoScrollEnabled = true
     @State private var selection: String?
     @State private var stackedIndex = 0
-    @State private var interval = 3.0
+    @State private var interval = 1.5
     @StateObject private var stackedAutoScroll = AutoScrollController()
 
     private var configuration: CarouselConfiguration {

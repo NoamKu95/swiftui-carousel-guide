@@ -12,7 +12,7 @@ final class AutoScrollController: ObservableObject {
 
     private var timer: AnyCancellable?
     private var resumeWorkItem: DispatchWorkItem?
-    private var interval: TimeInterval = 3
+    private var interval: TimeInterval = 1.5
     private var isEnabled = false
 
     func configure(enabled: Bool, interval: TimeInterval) {

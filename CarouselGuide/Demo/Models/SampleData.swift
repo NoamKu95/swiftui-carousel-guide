@@ -122,6 +122,13 @@ enum SampleData {
             subtitle: "Card 5",
             symbolName: "creditcard.fill",
             gradientColors: [.green, .green]
+        ),
+        CarouselItem(
+            id: "card-6",
+            title: "Card 6",
+            subtitle: "Card 6",
+            symbolName: "creditcard.fill",
+            gradientColors: [.orange, .orange]
         )
     ]
 }
