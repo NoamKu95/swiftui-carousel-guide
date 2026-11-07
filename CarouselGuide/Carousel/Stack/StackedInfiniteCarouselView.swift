@@ -469,7 +469,7 @@ struct StackedInfiniteCarouselView<Item: Identifiable, Card: View>: View {
     private func animateDragOffset(
         to target: CGFloat,
         duration: TimeInterval,
-        onComplete: @escaping () -> Void
+        onComplete: @escaping () -> Void = {}
     ) {
         settleTask?.cancel()
         let start = dragOffset
