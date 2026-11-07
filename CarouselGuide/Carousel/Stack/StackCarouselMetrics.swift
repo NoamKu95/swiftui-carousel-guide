@@ -14,11 +14,35 @@ enum StackCarouselMetrics {
     static let extentSlackRatio: CGFloat = 0.22
     /// Focused horizontal card width as a fraction of the stage.
     static let horizontalFocusWidthRatio: CGFloat = 0.88
+    /// Farthest slot we still draw (matches opacity window in the stack view).
+    static let maxVisibleSlot: Int = 2
+
+    /// How far from focus a resting card can sit for this count (capped by what we draw).
+    static func visibleOuterSlot(itemCount: Int) -> Int {
+        guard itemCount > 1 else { return 1 }
+        return min(maxVisibleSlot, max(itemCount / 2, 1))
+    }
 
     static func spacingRatio(for axis: CarouselAxis, itemCount: Int = 3) -> CGFloat {
         let base = axis == .horizontal ? spacingRatioHorizontal : spacingRatioVertical
+        if itemCount <= 1 { return base }
         if itemCount == 2 { return base * 1.15 }
-        if itemCount >= 4 { return base * 1.15 }
+
+        // Vertical: pack tighter as count grows so ±1 / ±2 peeks don’t stretch
+        // the stage into a tall strip. 3-up keeps the calibrated base look.
+        if axis == .vertical {
+            let outer = CGFloat(visibleOuterSlot(itemCount: itemCount))
+            var pack = 1 / outer // 3-up: 1; 4+: 0.5 so two slots fit like one did
+            if itemCount > 4 {
+                pack *= 4 / CGFloat(itemCount)
+            }
+            return base * pack
+        }
+
+        // Horizontal: mild tighten only — width is usually the constraint.
+        if itemCount >= 4 {
+            return base * min(1, 3 / CGFloat(itemCount))
+        }
         return base
     }
 
@@ -42,8 +66,8 @@ enum StackCarouselMetrics {
         let ratio = spacingRatio ?? self.spacingRatio(for: axis, itemCount: itemCount)
         let cardMain = cardMainLength(forCardCrossAxis: crossAxis, aspectRatio: aspectRatio, axis: axis)
         let spacing = cardMain * ratio
-        // Even rings / linear slots may park a card two spacings out.
-        let orbitReach: CGFloat = itemCount >= 4 ? (2 * spacing) : spacing
+        let outer = CGFloat(visibleOuterSlot(itemCount: itemCount))
+        let orbitReach = outer * spacing
         let slack = cardMain * extentSlackRatio
         return 2 * orbitReach + cardMain * neighborScaleAtOne + slack
     }
@@ -58,8 +82,8 @@ enum StackCarouselMetrics {
     ) -> CGFloat {
         let ratio = spacingRatio ?? self.spacingRatio(for: axis, itemCount: itemCount)
         let mainPerCross = axis == .vertical ? (1 / aspectRatio) : aspectRatio
-        let orbitMul: CGFloat = itemCount >= 4 ? 4 : 2
-        let multiplier = orbitMul * ratio + neighborScaleAtOne + extentSlackRatio
+        let outer = CGFloat(visibleOuterSlot(itemCount: itemCount))
+        let multiplier = 2 * outer * ratio + neighborScaleAtOne + extentSlackRatio
         return extent / (mainPerCross * multiplier)
     }
 }
